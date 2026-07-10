@@ -1,0 +1,123 @@
+Huawei Cloud Product,Source Product
+弹性云服务器ECS,Amazon Elasitc Compute Cloud (EC2)
+裸金属服务器BMS,Amazon Elasitc Compute Cloud (EC2)
+Flexus云服务,Amazon Lightsail
+,AWS Batch
+,VMware Cloud on AWS
+云容器引擎CCE,"Amazon Elastic Container Service (ECS)
+Amazon Elastic Kubernetes Service (EKS)"
+云容器引擎CCE Autopilot,AWS Fargate
+容器镜像服务SWR,Amazon Elastic Container Registry (Amazon ECR)
+函数工作流FunctionGraph,AWS Lambda
+云应用引擎 CAE,"AWS Elastic Beanstalk
+AWS App Runner"
+对象存储服务OBS,Amazon Simple Storage Service (S3)
+对象存储服务OBS,Amazon S3 Glacier storage classes
+云硬盘EVS,Amazon Elastic Block Store (EBS)
+"弹性文件服务 SFS
+高性能弹性文件服务 SFS Turbo","Amazon Elastic File System (EFS)
+Amazon FSx"
+云备份 CBR,AWS Backup
+存储容灾服务SDRS,AWS Elastic Disaster Recovery
+数据快递服务 DES,AWS Snow Family
+云存储网关 CSG,AWS Storage Gateway
+虚拟私有云VPC,Amazon Virtual Private Cloud (VPC)
+云解析服务DNS,Amazon Route 53
+弹性负载均衡ELB,Elastic Load Balancing (ELB)
+NAT网关NAT,Amazon NAT Gateway
+弹性公网IP EIP (按流量计费),AWS Data Transfer
+弹性公网IP EIP,Amazon Elastic IP (IPv4 Addresses)
+云专线 DC,AWS Direct Connect
+虚拟专用网络VPN,AWS VPN
+VPC终端节点 VPCEP,AWS PrivateLink
+企业路由器 ER,AWS Transit Gateway
+云连接CC,AWS Cloud WAN (Preview)
+全球加速 GA,AWS Global Accelerator
+内容分发网络CDN,Amazon CloudFront
+,AWS Directory Service
+,Amazon Cognito
+统一身份认证服务IAM,AWS IAM Identity Center
+资源访问管理 RAM,AWS Resource Access Manager
+企业主机安全HSS,Amazon Inspector
+云堡垒机 CBH,AWS Systems Manager
+DDoS防护 AAD,AWS Shield
+Web应用防火墙WAF,AWS WAF
+云防火墙 CFW,AWS Network Firewall
+数据加密服务DEW,AWS CloudHSM
+数据加密服务DEW,"AWS Key Management Service (KMS)
+AWS Secrets Manager"
+云证书管理服务CCM,AWS Certificate Manager
+数据安全中心DSC,Amazon Macie
+安全云脑 SecMaster,"Amazon GuardDuty
+AWS Security Hub"
+安全云脑 SecMaster,Amazon Detective
+云审计服务CTS,AWS CloudTrail
+安全云脑 SecMaster,"AWS Artifact
+AWS Audit Manager"
+云运维中心 COC,AWS Systems Manager
+配置审计 Config,AWS Config
+消息通知服务 SMN,Amazon Simple Notification Service (SNS)
+应用运维管理AOM,"AWS Distro for OpenTelemetry
+Amazon DevOps Guru"
+应用性能管理APM,AWS X-Ray
+云监控服务 CES,Amazon CloudWatch
+云日志服务LTS,Amazon CloudWatch
+应用运维管理AOM,Amazon Managed Service for Prometheus
+应用运维管理AOM,Amazon Managed Service for Grafana
+云运维中心 COC,AWS Systems Manager
+多活高可用服务 MAS,"AWS Fault Injection Simulator
+AWS Resilience Hub"
+优化顾问 OA,AWS Trusted Advisor
+,AWS Health Dashboard
+云运维中心 COC,AWS Managed Services
+组织 Organizations,AWS Organizations
+资源治理中心 RGC,AWS Control Tower
+云运维中心 COC,AWS Service Catalog
+"云数据库 RDS for MySQL
+云数据库 RDS for MariaDB
+云数据库 RDS for PostgreSQL",Amazon RDS
+云数据库 TaurusDB,"Amazon Aurora
+Amazon Aurora MySQL
+Amazon Aurora PostgreSQL
+Amazon Aurora Serverless v2
+Amazon Aurora Serverless"
+云数据库GaussDB,Amazon RDS for Oracle
+文档数据库服务DDS,Amazon DocumentDB (with MongoDB compatibility)
+云数据库 GeminiDB Cassandra,"Amazon DynamoDB
+Amazon Keyspaces (for Apache Cassandra)"
+云数据库 GeminiDB Influx,Amazon Timestream
+分布式缓存服务Redis版,"Amazon ElastiCache
+Amazon ElastiCache for Redis
+Amazon ElastiCache Serverless"
+数据复制服务DRS,AWS Database Migration Service (DMS)
+MapReduce服务 MRS,Amazon EMR
+数据仓库服务 DWS,Amazon Redshift
+数据湖探索DLI,Amazon Athena
+云搜索服务CSS,Amazon OpenSearch Service
+数据接入服务DIS",Amazon Kinesis Data Streams
+"数据湖治理中心DataArts Studio
+湖仓构建 LakeFormation","AWS Glue
+AWS Lake Formation
+Amazon DataZone"
+,Amazon QuickSight
+AI开发平台ModelArts,Amazon Bedrock
+AI开发平台ModelArts,Amazon SageMaker
+图引擎服务GES,Amazon Neptune
+"分布式消息服务Kafka版
+分布式消息服务RabbitMQ版
+分布式消息服务RocketMQ版","Amazon Managed Streaming for Apache Kafka (MSK)
+Amazon MQ
+Amazon Simple Queue Service (SQS)"
+事件网格 EG,Amazon EventBridge
+API网关APIG,Amazon API Gateway
+应用与数据集成平台ROMAConnect,Amazon AppFlow
+代码托管 CodeArts Repo,AWS CodeCommit
+流水线 CodeArts Pipeline,AWS CodePipeline
+"代码检查 CodeArts Check
+编译构建 CodeArts Build",AWS CodeBuild
+部署 CodeArts Deploy,AWS CodeDeploy
+制品仓库 CodeArts Artifact,AWS CodeArtifact
+视频直播 Live,Amazon Interactive Video Service
+媒体处理 MPC,AWS Elemental MediaConvert
+云桌面 Workspace,"Amazon WorkSpaces
+Amazon WorkSpaces Web"
