@@ -27,13 +27,16 @@ ROW_NUM_COL = "#"
 def load_csv_rows(csv_path: Path) -> list[dict]:
     """
     Load CSV as a list of rows.
-    Each row: {huawei: [str, ...], source: [str, ...]}
+    Each row: {huawei: [str, ...], source: [str, ...]}. The Huawei list may
+    be empty when the CSV explicitly records that a source product is not yet
+    mapped.
 
     CSV format: Huawei Cloud Product,Source Product
     Both columns can have multiple products separated by newlines (quoted).
     """
     rows: list[dict] = []
-    with open(csv_path, encoding="utf-8") as f:
+    # utf-8-sig accepts both regular UTF-8 and exports that include a BOM.
+    with open(csv_path, encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         for row_num, row in enumerate(reader):
             if len(row) < 2:
@@ -42,11 +45,11 @@ def load_csv_rows(csv_path: Path) -> list[dict]:
             source_raw = row[1].strip()
             if row_num == 0 and huawei == HUAWEI_PRODUCT_COL and source_raw == SOURCE_PRODUCT_COL:
                 continue
-            if not huawei or not source_raw:
+            if not source_raw:
                 continue
             huawei_products = [p.strip() for p in huawei.split("\n") if p.strip()]
             source_products = [p.strip() for p in source_raw.split("\n") if p.strip()]
-            if huawei_products and source_products:
+            if source_products:
                 rows.append({"huawei": huawei_products, "source": source_products})
     return rows
 
@@ -54,7 +57,7 @@ def load_csv_rows(csv_path: Path) -> list[dict]:
 # Words to ignore when comparing product names
 _STOP_WORDS = {
     "amazon", "aws", "for", "and", "the", "with", "service", "services",
-    "google", "gcp", "oracle", "oci", "cloud", "platform",
+    "google", "gcp", "oracle", "oci", "microsoft", "azure", "cloud", "platform",
     "of", "in", "to", "a", "an", "or", "on", "at", "by", "per", "is",
     "running", "using", "first", "standard",
 }
@@ -115,6 +118,11 @@ def _keyword_weight(token: str) -> float:
     return 1.0
 
 
+def _canonical_product_name(name: str) -> str:
+    """Normalize spacing and case for exact mapping-row comparisons."""
+    return " ".join(name.casefold().split())
+
+
 def match_product(
     source_name: str, csv_rows: list[dict], source_spec: str = ""
 ) -> list[str]:
@@ -133,11 +141,33 @@ def match_product(
     if not input_kw:
         return []
 
+    # An explicit CSV row takes precedence, including an intentionally blank
+    # Huawei mapping. This prevents an unmapped Azure product from drifting to
+    # an unrelated row through a generic word such as "database" or "storage".
+    canonical_source = _canonical_product_name(source_name)
+    exact_rows = [
+        row
+        for row in csv_rows
+        if any(
+            _canonical_product_name(source_entry) == canonical_source
+            for source_entry in row["source"]
+        )
+    ]
+    if exact_rows:
+        exact_products: list[str] = []
+        for row in exact_rows:
+            for huawei_product in row["huawei"]:
+                if huawei_product not in exact_products:
+                    exact_products.append(huawei_product)
+        return exact_products
+
     # Phase 1: try to find rows with keyword overlap
     candidates: list[tuple[float, int, int, list[str]]] = []
     # Tuple shape:
     # (weighted_overlap, strong_overlap_count, -row_kw_count, hw_products)
     for row in csv_rows:
+        if not row["huawei"]:
+            continue
         # Collect all keywords from all source product names in this CSV row
         row_kw: set[str] = set()
         for source_entry in row["source"]:
@@ -148,7 +178,11 @@ def match_product(
         strong_overlap_count = sum(
             1 for token in shared_kw if _keyword_weight(token) >= 1.0
         )
-        if weighted_overlap > 0:
+        # One broad family word is not enough evidence for a product mapping.
+        # Two broad terms can still identify names such as "Disk Storage".
+        if weighted_overlap > 0 and (
+            strong_overlap_count > 0 or len(shared_kw) >= 2
+        ):
             # Store negative keyword count: fewer keywords = more specific match
             candidates.append(
                 (weighted_overlap, strong_overlap_count, -len(row_kw), row["huawei"])

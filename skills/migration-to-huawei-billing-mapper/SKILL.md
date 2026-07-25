@@ -1,17 +1,17 @@
 ---
 name: migration-to-huawei-billing-mapper
-description: Use when users provide billing reports or resource inventories from AWS, GCP, Oracle Cloud Infrastructure (OCI), or similar source clouds and need to migrate to Huawei Cloud, including product matching, regional mapping, per-category sub-agent spec recommendation, and exportable migration inventory generation.
+description: Use when users provide billing reports, Cost Management exports, or resource inventories from AWS, Microsoft Azure, or another source cloud and need to migrate to Huawei Cloud, including product matching, regional mapping, per-category sub-agent spec recommendation, and exportable migration inventory generation. Use this skill for Azure bills even when the input is described only as a Cost Details export, usage CSV, subscription inventory, or resource export.
 ---
 
 # Source Cloud to Huawei Cloud Billing Migration
 
 ## Overview
 
-8-step pipeline that converts a source-cloud billing PDF, CSV, or resource export into a categorized, reviewed, Huawei-Cloud-matched inventory plus Excel export.
+8-step pipeline that converts a source-cloud billing file or resource export into a categorized, reviewed, Huawei-Cloud-matched inventory plus Excel export.
 
 ```text
-Input: source-cloud billing PDF / CSV / resource inventory
-  -> Step 1: Generate raw Markdown and detect source cloud/module
+Input: source-cloud billing file / resource inventory
+  -> Step 1: Billing Source to Raw Markdown and Detect Source Cloud/Module
   -> Step 2: Categorize & Tabulate (agent analysis)
   -> Step 3: Review Categorized Output (agent review)
   -> Step 4: Product Matching (match_products.py + selected mapping CSV)
@@ -26,13 +26,12 @@ Output: Final inventory MD with availability status + single-sheet Excel
 
 During Step 1, detect the source cloud from the raw bill content and select one module. Keep that module consistent throughout the rest of the run:
 
-| Source Cloud | Module Notes | Mapping CSV |
-| --- | --- | --- |
-| AWS | `references/source-clouds/aws.md` | `data/source-clouds/aws-hwc-product.csv` |
-| GCP | `references/source-clouds/gcp.md` | `data/source-clouds/gcp-hwc-product.csv` |
-| Oracle Cloud / OCI | `references/source-clouds/oracle.md` | `data/source-clouds/oracle-hwc-product.csv` |
+| Source Cloud | Module Notes | Mapping CSV | Region Catalog |
+| --- | --- | --- | --- |
+| AWS | `references/source-clouds/aws.md` | `data/source-clouds/aws-hwc-product.csv` | Region IDs are described in the module and normalized against `references/regions.md` |
+| Microsoft Azure | `references/source-clouds/azure.md` | `data/source-clouds/azure-hwc.csv` | `data/source-clouds/azure-regions.csv` |
 
-If the source cloud is unsupported, clone the closest module, add provisional mapping rows, and clearly mark any assumptions in the output notes. The GCP and Oracle seed datasets include some starter mappings that should be treated as review-required migration hints, not contractual pricing truth.
+AWS and Microsoft Azure are the source clouds with bundled modules in this version. If the source cloud is unsupported, do not silently select either mapping CSV. Clone the closest module only when the user wants the skill extended, add provisional mapping rows, and clearly mark assumptions as review-required migration hints rather than contractual pricing truth.
 
 ### Language Adaptation
 
@@ -80,26 +79,28 @@ Check all prerequisites before starting. If `hcloud` is missing, note that Step 
 
 > IMPORTANT: Run steps sequentially unless noted. Each step's output is the next step's input. All output files go to `output/`.
 
-### Step 1: PDF to Markdown
+### Step 1: Billing Source to Raw Markdown
 
-**Goal:** Convert the user-provided source-cloud bill into raw Markdown text, then use that raw content to detect the source cloud and select the correct source-specific module. If the user already provides CSV, TSV, Markdown, or a structured inventory, skip `markitdown` and normalize directly into Markdown.
+**Goal:** Convert the user-provided source-cloud billing or inventory file into raw Markdown text, then use that raw content to detect the source cloud and select the correct source-specific module. The input is not limited to PDF: use `markitdown` for any document or data format supported by the installed version. If the input is already clean Markdown or plain structured text, it may be normalized directly without reconversion.
 
-After `output/billing_raw.md` is produced, determine whether the input comes from AWS, GCP, Oracle Cloud Infrastructure, or another source cloud, then load the correct source-specific hints and mapping CSV.
+After `output/billing_raw.md` is produced, determine whether the input comes from AWS, Microsoft Azure, or an unsupported source cloud, then load the correct source-specific hints, mapping CSV, and region-normalization data.
 
 Detection signals:
 
-- Product names or SKUs in the bill, such as `Amazon EC2`, `Compute Engine`, `Autonomous Database`
-- Region formats, such as `us-east-1`, `us-central1`, `ap-singapore-1`
-- Export format names, service namespaces, or invoice branding
+- Product names or SKUs in the bill, such as `Amazon EC2`, `Virtual Machines`, or `Azure Blob Storage`
+- Region formats, such as AWS `us-east-1` or Azure `southeastasia` / `Southeast Asia`
+- Export format names, service namespaces, invoice branding, Azure resource IDs, or Cost Management fields
 
 Use the selected module only for source-cloud-specific parsing, alias recognition, traffic normalization hints, and product mapping CSV selection. The rest of the pipeline remains shared.
 
-**Try `markitdown` first for PDF inputs:**
+**Use `markitdown` as the default converter for supported inputs:**
 
 ```bash
 mkdir -p output
-markitdown <user-provided-billing.pdf> > output/billing_raw.md
+markitdown <user-provided-billing-file> > output/billing_raw.md
 ```
+
+Do not infer that the source must be a PDF from the use of `markitdown`. The command may receive supported spreadsheet, document, presentation, web, text, image, or other billing-export formats. Inspect the installed `markitdown` version when format support is uncertain.
 
 **OCR fallback path for scanned or partially extractable PDFs.** If `markitdown` produces empty output, obvious parsing errors, or only a partial first-page summary, generate a searchable PDF with a text layer by using forced OCR and rerun `markitdown` on that new PDF. See `references/ocr-billing-pdf.md`.
 
@@ -116,31 +117,31 @@ original scanned PDF
 
 Requires an OCR stack when OCR is needed. Before running OCR, verify that `ocrmypdf`, `tesseract`, the required language packs, and `gs` are all available. For macOS, Ubuntu / Debian, and Windows install commands, see `references/ocr-billing-pdf.md`.
 
-Use this decision tree for PDF inputs:
+Use this decision tree:
 
-1. Run direct `markitdown` on the original PDF.
+1. Identify the input format and run `markitdown` directly when that format is supported. For already clean Markdown or plain structured text, direct normalization is also acceptable.
 2. Inspect `output/billing_raw.md`.
-3. Treat the direct extraction as `FAIL` and switch to OCR if any of these are true:
+3. Treat direct extraction as `FAIL` if any of these are true:
    - The file is empty or `markitdown` errors
-   - The output is suspiciously short for a multi-page bill, for example only a few KB and mostly summary-page text
+   - The output is suspiciously short relative to the source, or contains mostly summary text instead of billing detail
    - The output contains branding and totals but not detailed usage rows, service sections, regions, quantities, or SKU-like descriptions
-4. Run `ocrmypdf --force-ocr --deskew --rotate-pages -l chi_sim+eng input.pdf output/billing_searchable.pdf`, then rerun `markitdown`.
-5. Treat forced OCR as the default OCR mode for this workflow once direct `markitdown` extraction is judged insufficient, because billing PDFs often contain vector pages that otherwise get skipped or only partially extracted.
+4. If the failed or incomplete input is a PDF, run `ocrmypdf --force-ocr --deskew --rotate-pages -l chi_sim+eng input.pdf output/billing_searchable.pdf`, then rerun `markitdown`.
+5. If the input is not a PDF, do not use the PDF OCR branch. Use a format-appropriate structured parser or normalize the source directly when practical; otherwise ask for another MarkItDown-supported or structured export.
+6. Treat forced OCR as the default OCR mode once a PDF enters the OCR branch, because billing PDFs often contain vector pages that otherwise get skipped or only partially extracted.
 
 **Verify output** before proceeding:
 
 - It is non-empty
 - It contains recognizable source-cloud product names from the selected module
-- It includes detailed line-item content from beyond the first summary page
+- For paginated inputs, it includes detailed line-item content beyond the first summary page
 - It contains enough structure to recover per-service usage, amount, quantity, and region clues
 
 Examples:
 
-- AWS: `EC2`, `S3`, `RDS`, `Lambda`
-- GCP: `Compute Engine`, `Cloud Storage`, `Cloud SQL`, `BigQuery`
-- OCI: `Compute`, `Block Volume`, `Load Balancer`, `Autonomous Database`
+- AWS: `EC2`, `S3`, `RDS`, `Lambda`, `us-east-1`, Cost Explorer / CUR fields
+- Microsoft Azure: `Virtual Machines`, `Blob Storage`, `Azure SQL`, `ResourceLocation`, `/subscriptions/.../providers/...`
 
-If searchable-PDF generation or `markitdown` still fails, ask the user for a billing export CSV, pricing export, resource inventory, or screenshots.
+If PDF OCR plus `markitdown` still fails, or a non-PDF format cannot be converted or normalized reliably, ask the user for another supported billing export, pricing export, structured resource inventory, or screenshots.
 
 **Output:** `output/billing_raw.md`
 
@@ -162,7 +163,7 @@ For each line item:
 - If the row does not explicitly contain a region but its surrounding context clearly scopes it to a region, inherit that scoped region for that row
 - If the row's region truly cannot be determined, leave the source region as unknown during parsing, then default its `HWC Target Region` to `ap-southeast-3` and add a note explaining the fallback
 
-Map each resolved source region to the geographically nearest Huawei Cloud region using `references/regions.md`.
+Normalize each resolved source region with the selected source module, then map it to the geographically nearest Huawei Cloud region using `references/regions.md`. For Azure, accept both display names and programmatic names from `data/source-clouds/azure-regions.csv`; do not treat `global` or an empty `ResourceLocation` as a physical region.
 
 After region assignment, group all line items by **(Source Product, Source Spec, Region)**. Sum quantities and monthly cost. Do not merge resources across different regions.
 
@@ -170,11 +171,11 @@ After region assignment, group all line items by **(Source Product, Source Spec,
 
 | Category | Criterion | Cross-cloud examples (non-exhaustive) |
 | --- | --- | --- |
-| **Compute** | CPU / memory compute capacity, virtual machines, containers, serverless runtimes | EC2, Compute Engine, OCI Compute, GKE node pools, OKE worker nodes, Lambda, Cloud Functions, Functions |
-| **Storage** | Persistent data storage, object, block, file, archive, backup | S3, Cloud Storage, OCI Object Storage, EBS, Persistent Disk, Block Volume, EFS, Filestore |
-| **Network** | Connectivity, traffic distribution, DNS, CDN, private link, egress / transfer | ELB, Cloud Load Balancing, OCI Load Balancer, NAT Gateway, Cloud NAT, FastConnect, Cloud CDN, Data Transfer |
-| **Database** | Managed databases, caches, warehouses, migration tooling | RDS, Cloud SQL, AlloyDB, Autonomous Database, HeatWave-like managed DBs, ElastiCache, Memorystore |
-| **Other** | Security, observability, messaging, analytics, governance, identity, devtools, AI | IAM, CloudWatch, Cloud Logging, Pub/Sub, SNS, Oracle Logging, BigQuery, Athena, ModelArts mapping candidates |
+| **Compute** | CPU / memory compute capacity, virtual machines, containers, serverless runtimes | EC2, EKS, Lambda, Azure Virtual Machines, AKS, Azure Functions, App Service |
+| **Storage** | Persistent data storage, object, block, file, archive, backup | S3, EBS, EFS, Azure Blob Storage, Disk Storage, Azure Files, Azure Backup |
+| **Network** | Connectivity, traffic distribution, DNS, CDN, private link, egress / transfer | ELB, NAT Gateway, CloudFront, Azure Load Balancer, Application Gateway, Private Link, Front Door, Data Transfer |
+| **Database** | Managed databases, caches, warehouses, migration tooling | RDS, Aurora, ElastiCache, Azure SQL, Cosmos DB, Azure Database for PostgreSQL, Azure Managed Redis |
+| **Other** | Security, observability, messaging, analytics, governance, identity, devtools, AI | IAM, CloudWatch, SNS, Entra ID, Azure Monitor, Sentinel, Service Bus, Synapse Analytics, Azure DevOps |
 
 **Decision rule:** classify by the service's primary function. When a service is ambiguous, classify by the dominant buyer intent in the bill. Examples: container registry -> Storage, API gateway -> Network, database migration tooling -> Database.
 
@@ -201,8 +202,10 @@ Rules:
 
 - **Merge rule:** if `Source Product + Source Spec + Region` are identical, combine them into one row
 - **Traffic-cost normalization rule:** before merging, normalize only the explicitly supported traffic labels for this version instead of trying to collapse every network-byte charge
-- Consolidate only `Data Transfer` style rows and `NAT Gateway Data Processed` style rows under `Source Product = Data Transfer` when the billing line is fundamentally traffic-based
-- Do not automatically fold CDN, load-balancer, EIP, bandwidth, or other network-product traffic rows into `Data Transfer` unless a later version of this skill explicitly adds that rule
+- Within each source `Region`, consolidate all non-NAT transfer components into exactly one ordinary row with `Source Product = Data Transfer`; outbound/egress and cross-region amounts or breakdowns belong in `Notes`, not separate rows or `Source Spec`
+- For a multi-region customer, repeat the ordinary Data Transfer aggregate once per `Region`; rows in different regions do not violate the consolidation rule
+- When NAT is present in a region, keep its processed-traffic charge as exactly one additional `Source Product = Data Transfer` row for that same region, so that region has two Data Transfer rows in total: one ordinary aggregate and one NAT processed aggregate
+- Do not automatically fold CDN, provisioned bandwidth, or other network-product charges into `Data Transfer`; the specific exception is a row whose charge is semantically outbound/egress or cross-region transfer, which belongs in the ordinary Data Transfer aggregate
 - Keep gateway or load-balancer runtime-hour charges as standalone resources if they are instance-hour or provisioned-appliance style charges
 - **Source Est. Resource Count:** estimate only for clear runtime-hour style countable resources; otherwise `—`
 - The `HWC Target Region` column must contain exactly one Huawei Cloud region per row
@@ -238,6 +241,8 @@ The validator checks rule-shaped constraints such as:
 - Non-hourly rows incorrectly using non-`—` resource counts
 - `Category` column staying consistent within each section; section titles themselves may be localized
 - Supported traffic-normalization rows (`Data Transfer` and NAT processed traffic) that were not normalized to `Source Product = Data Transfer`
+- Data Transfer consolidation count per `Region`: one ordinary row without NAT in that region, or one ordinary row plus one NAT processed row when NAT is present there; different regions may repeat this structure
+- Outbound/egress and cross-region transfer details left as separate rows, left in `Source Spec`, or missing from the ordinary Data Transfer row's `Notes`
 - `Monthly (USD)` formatting
 
 If the validator reports any `FAIL`, edit `output/billing_categorized.md` in place and rerun it. Do not proceed while any validator failure remains.
@@ -248,7 +253,8 @@ Manual review should focus only on the judgment-based checks that the validator 
 
 - Semantic merge correctness: rows were not incorrectly merged across different regions or unlike resources even if no exact duplicate tuple remains
 - Traffic-cost normalization follows the Step 2.2 rule in full, not just the validator's keyword check
-- Only `Data Transfer` style rows and NAT processed traffic were consolidated into `Source Product = Data Transfer`
+- Within each `Region`, non-NAT transfer charges were consolidated into one ordinary `Data Transfer` row, with outbound/egress and cross-region details preserved in `Notes`
+- NAT processed traffic was consolidated into one additional `Data Transfer` row only in each region where NAT is present, and was not mixed into the ordinary aggregate
 - CDN were not force-merged into `Data Transfer` by overbroad normalization
 - Runtime-hour NAT gateway or load-balancer rows were preserved as standalone resources when they are appliance/runtime charges rather than traffic charges
 - For hourly rows, `Source Est. Resource Count` is used only where the row is clearly a countable runtime-hour resource; otherwise `—`
@@ -298,6 +304,8 @@ uv run skills/migration-to-huawei-billing-mapper/scripts/match_products.py \
   --output output/billing_matched.md
 ```
 
+For AWS, pass `data/source-clouds/aws-hwc-product.csv`. For Microsoft Azure, pass `data/source-clouds/azure-hwc.csv`. The source-cloud decision made in Step 1 controls this argument; do not choose a CSV based on an individual row that merely resembles another provider's product name.
+
 **Script behavior:**
 
 - Parses Markdown tables from input
@@ -327,6 +335,8 @@ uv run skills/migration-to-huawei-billing-mapper/scripts/match_products.py \
 
 **Agent-driven step.** Read `output/billing_matched.md`, first find the appropriate tool for creating child sessions, then split the work by category table (`Compute`, `Storage`, `Network`, `Database`, `Other`), and spawn one child session per non-empty category.
 
+> **Non-negotiable sub-agent rule:** Step 5 must use sub-agents whenever at least one non-empty category exists. This requirement does not depend on perceived complexity: it still applies when the inventory has only one category or one row, the recommendation looks obvious, the expected product or spec is already familiar, or the required documentation is already cached. A task looking simple is never a reason for the parent session to perform specification recommendation itself or skip spawning the required category sub-agent.
+
 #### 5.0 Find the Sub-Agent Tool First
 
 Before delegating any category work:
@@ -337,7 +347,23 @@ Before delegating any category work:
 
 Document the decision briefly in the working notes so it is clear which tool was used for Step 5 delegation.
 
-#### 5.0.1 Instantiate the Child-Agent Prompt Template
+#### 5.0.1 Enforce the Parent-Session Boundary
+
+When a child-agent tool is available, the parent session must not query Huawei Cloud specifications, write category recommendations, or complete any category result on a child's behalf. This separation keeps every recommendation attributable to the child session that collected and saved its supporting documentation.
+
+The parent session may only:
+
+- Read `output/billing_matched.md` to identify which top-level categories are non-empty and extract their exact tables
+- Instantiate the required child-agent prompt for each non-empty category
+- Spawn and coordinate the child sessions
+- Check that each expected category output and local documentation cache exists and follows the required structure
+- Merge the completed child outputs into `output/billing_with_specs.md` without adding, rewriting, or resolving recommendations
+
+Every non-empty top-level category must have its own child session. Do not combine multiple categories in one child session, omit a non-empty category, or let the parent session act as the child for a category. If no child-agent tool is available or a required category child cannot be created, stop Step 5 and report the blocker; the parent must not perform that category's recommendation work as a fallback.
+
+Determine whether to spawn category sub-agents solely from whether each category is non-empty, never from how easy, short, repetitive, or self-evident its recommendation work appears.
+
+#### 5.0.2 Instantiate the Child-Agent Prompt Template
 
 Use `references/child-agent-prompt-template.md` as the required prompt skeleton for each Step 5 child session. Do not write ad hoc child prompts when delegating category work.
 
@@ -389,11 +415,36 @@ output/spec-docs/
 - Save each fetched page as a readable local artifact such as `.md`, `.html`, or `.txt`
 - File names should be stable and product-oriented, for example `ecs.md`, `rds-mysql.md`, `evs.md`
 - After documentation is fetched and saved locally, the child session continues with Step 5.2 for only that category
-- The parent session remains responsible for combining all category outputs back into one final `output/billing_with_specs.md`
+- The parent session remains responsible for combining all category outputs back into one final `output/billing_with_specs.md`, but must preserve the child-authored recommendation content unchanged
 
 #### 5.1 Look Up Documentation
 
-First, read `references/product-docs.md` for official Huawei Cloud documentation URLs. For each category child session:
+Before looking up documentation or recommending a spec, perform the mandatory service-region precheck for every row with a non-empty `Huawei Cloud Product` and `HWC Target Region`.
+
+Run:
+
+```bash
+uv run skills/migration-to-huawei-billing-mapper/scripts/check_service_region.py \
+  --product "<Huawei Cloud Product>" \
+  --region "<HWC Target Region>" \
+  --json
+```
+
+The script reads `data/code.json`, resolves the Huawei Cloud product name to its service code, and applies these checks in order:
+
+1. If the code entry has `"global": true`, treat the service as available in every region without making an API request.
+2. If the code exists as a key in `data/product-regions.json`, use that list as the authoritative supported-region list without making an API request. The special region value `all` matches every target region.
+3. Otherwise, call:
+
+```text
+https://console-intl.huaweicloud.com/apiexplorer/new/v1/endpoints/{code}/search?offset=0&limit=50
+```
+
+For API-backed services, it considers the service available only when a successful response contains the target region in `endpoints[].region`. If the API request fails, times out, returns invalid JSON, or otherwise cannot be parsed, treat the service as available and record that the API check failed. This fallback is required because the service may not yet be registered in API Explorer. If the product name cannot be resolved from `data/code.json`, skip this API check for that row and record that it was skipped; do not invent a service code.
+
+If the service-region result is `Unavailable`, do not recommend a spec for that row unless official documentation identifies a supported alternative in the same target region. Include the service code and region-check result in `Recommendation Notes`. `Skipped` and API-failure fallback results must also be recorded in the notes so later review can distinguish them from a confirmed regional match.
+
+After this precheck, read `references/product-docs.md` for official Huawei Cloud documentation URLs. For each category child session:
 
 - Identify all distinct Huawei Cloud products that appear in that category table
 - Fetch the official documentation pages needed for those products
@@ -410,7 +461,7 @@ Use the official docs to verify:
 
 If the product is not listed in `product-docs.md`, search Huawei Cloud official documentation, fetch the relevant page, save it locally, and cite the limitation in the notes.
 
-**Mandatory region support check:** before recommending any Huawei Cloud product or spec, verify whether the product is supported in the row's `HWC Target Region`.
+**Mandatory region support check:** the service-region precheck above is required before recommending any Huawei Cloud product or spec. Use official product documentation as the second source of evidence for product-specific regional limitations.
 
 #### 5.2 Recommend Spec
 
@@ -439,17 +490,17 @@ Rules:
 
 **Mandatory clarity rule for non-1:1 mappings:** `Recommendation Notes` must explicitly state the migration signal using one of these labels:
 
-- `🟢`
-- `🟡`
-- `🔴`
+- 🟢
+- 🟡
+- 🔴
 
 Label semantics:
 
-- `🟢`: near like-for-like mapping; no major product-form mismatch is known from the reviewed docs
-- `🟡`: workable substitute exists, but there are product-model, feature, runtime, or operational differences that must be called out
-- `🔴`: no defensible native equivalent, or the region/support limitation is severe enough that redesign, self-managed deployment, or manual architecture change is required
+- 🟢: near like-for-like mapping; no major product-form mismatch is known from the reviewed docs
+- 🟡: workable substitute exists, but there are product-model, feature, runtime, or operational differences that must be called out. For example, when one side is serverless and the other uses a fixed or provisioned specification, classify the mapping as 🟡 rather than 🟢, even if their functional scope or estimated capacity is otherwise close
+- 🔴: no defensible native equivalent, or the region/support limitation is severe enough that redesign, self-managed deployment, or manual architecture change is required
 
-For `🟡` or `🔴`, explicitly describe what differs: service model, serverless semantics, autoscaling behavior, operations ownership, feature gaps, or required redesign.
+For 🟡 or 🔴, explicitly describe what differs: service model, serverless semantics, autoscaling behavior, operations ownership, feature gaps, or required redesign.
 
 At the bottom of each category table, add:
 
@@ -615,6 +666,10 @@ Excel layout requirements:
 - Metadata blockquote lines near the top of the Markdown should be exported as merged full-width rows so `Source Cloud`, `Total Monthly`, and similar summary fields are easy to read and edit
 - Each category's `**Recommendation rationale:** ...` paragraph should be exported immediately after that category table as a merged full-width row
 - Table headers and resource rows remain unmerged regular cells
+- Column widths should adapt to their contents within a readable minimum and maximum; long values should wrap instead of creating excessively wide columns
+- Every content row, including merged metadata and rationale rows, should adapt its height to the wrapped content
+- Table header rows should retain enough minimum height for wrapped multi-line labels to remain fully visible
+- Mixed Chinese/English recommendation text should use its displayed character width when calculating wrapped lines so the resulting row height does not clip content
 
 **Script:** `uv run skills/migration-to-huawei-billing-mapper/scripts/export_excel.py`
 
@@ -631,14 +686,16 @@ uv run skills/migration-to-huawei-billing-mapper/scripts/export_excel.py \
 ## Region Handling
 
 - Extract the source region per billing row from the row itself or its immediate billing context
+- Normalize the value with the selected source module before comparing geography; for Azure, use `data/source-clouds/azure-regions.csv` to resolve both display and programmatic names
 - Map that row to the nearest Huawei Cloud region using `references/regions.md`
 - If a specific row has no determinable region, default to `ap-southeast-3` with an explicit note
-- Do not collapse multiple source regions into a single row
+- Do not collapse multiple source regions into a single row; apply the Data Transfer consolidation rule independently within each source region
 
 ## Error Handling
 
-- If `markitdown` fails on the original PDF, switch to the searchable-PDF OCR path in Step 1
-- If OCR plus `markitdown` still fails, ask for a structured export instead
+- If `markitdown` fails or produces incomplete output, first distinguish PDF inputs from other supported formats
+- For PDF inputs only, switch to the searchable-PDF OCR path in Step 1; for non-PDF inputs, use format-appropriate structured normalization or request another supported export
+- If PDF OCR plus `markitdown` still fails, ask for a structured export instead
 - If Step 3 or Step 7 finds inconsistencies, correct the file in place before continuing
 - If CSV matching returns many blanks, continue with those rows left blank; do not manually invent Huawei Cloud product mappings in Step 4
 - If `hcloud` is not available, Step 6 and Step 7 may both be skipped; keep only documentation-backed recommendations and note that availability was not verified
@@ -664,4 +721,5 @@ output/
 2. Parse Markdown tables with a real CSV/pipe-aware approach. Do not split mapping CSV rows manually.
 3. Keep fixed schema headers in English even when the user speaks another language.
 4. Do not overstate non-1:1 mappings as direct replacements.
-5. Treat the GCP and Oracle starter mappings as seed data that may need manual review and expansion.
+5. For Azure, distinguish the canonical service family from SKU and meter text, and normalize `ResourceLocation` before selecting the Huawei Cloud target region.
+6. Never relabel a non-USD Azure `CostInBillingCurrency` value as `Monthly (USD)` without an explicit conversion basis.

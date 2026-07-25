@@ -11,12 +11,24 @@ using Aspose.Cells for Python.
 """
 
 import argparse
+import math
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 import aspose.cells as cells
 from aspose.pydrawing import Color
+
+
+MIN_COLUMN_WIDTH = 10.0
+MAX_COLUMN_WIDTH = 45.0
+MIN_ROW_HEIGHT = 15.0
+MIN_HEADER_ROW_HEIGHT = 30.0
+RATIONALE_LABEL_RE = re.compile(
+    r"^(?:Recommendation\s+rationale|推荐说明|推荐理由|推荐依据)\s*[:：]",
+    re.IGNORECASE,
+)
 
 
 def clean_md_text(text: str) -> str:
@@ -25,6 +37,12 @@ def clean_md_text(text: str) -> str:
     text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
     text = re.sub(r"`([^`]*)`", r"\1", text)
     return text.strip()
+
+
+def parse_rationale_line(line: str) -> str | None:
+    """Return display text for a supported category rationale line."""
+    cleaned = clean_md_text(line)
+    return cleaned if RATIONALE_LABEL_RE.match(cleaned) else None
 
 
 def parse_md(md_path: Path) -> tuple[list[str], list[dict]]:
@@ -77,8 +95,9 @@ def parse_md(md_path: Path) -> tuple[list[str], list[dict]]:
                     continue
                 if paragraph_line.startswith("## ") or paragraph_line.startswith("|"):
                     break
-                if paragraph_line.startswith("**Recommendation rationale:**"):
-                    rationale.append(clean_md_text(paragraph_line))
+                rationale_line = parse_rationale_line(paragraph_line)
+                if rationale_line is not None:
+                    rationale.append(rationale_line)
                 i += 1
 
             sections.append(
@@ -109,6 +128,92 @@ def apply_style(target, *, bold=False, font_size=None, bg=None, wrap=True):
     target.set_style(style)
 
 
+def display_width(text: str) -> int:
+    """Return approximate Excel character width for mixed Unicode text."""
+    width = 0
+    for char in text:
+        if unicodedata.combining(char):
+            continue
+        if char == "\t":
+            width += 4
+        elif unicodedata.east_asian_width(char) in {"W", "F"}:
+            width += 2
+        else:
+            width += 1
+    return width
+
+
+def wrapped_line_count(text: str, available_width: float) -> int:
+    """Estimate wrapped lines using the final Excel column width."""
+    usable_width = max(available_width - 2.0, 1.0)
+    logical_lines = text.splitlines() or [""]
+    return sum(
+        max(1, math.ceil(display_width(line) / usable_width))
+        for line in logical_lines
+    )
+
+
+def estimated_row_height(sheet, row: int, max_columns: int) -> float:
+    """Estimate row height when Aspose under-measures mixed-width text."""
+    max_lines = 1
+    for col in range(max_columns):
+        cell = sheet.cells.get(row, col)
+        if not cell.string_value or not cell.get_style().is_text_wrapped:
+            continue
+
+        if cell.is_merged:
+            merged_range = cell.get_merged_range()
+            available_width = sum(
+                sheet.cells.get_column_width(merged_col)
+                for merged_col in range(
+                    merged_range.first_column,
+                    merged_range.first_column + merged_range.column_count,
+                )
+            )
+        else:
+            available_width = sheet.cells.get_column_width(col)
+
+        max_lines = max(
+            max_lines,
+            wrapped_line_count(cell.string_value, available_width),
+        )
+
+    return max_lines * MIN_ROW_HEIGHT
+
+
+def auto_fit_dimensions(sheet, max_columns: int, header_rows: list[int]):
+    """Fit used columns and rows while keeping long text readable."""
+    if max_columns <= 0:
+        return
+
+    sheet.auto_fit_columns(0, max_columns - 1)
+    for col in range(max_columns):
+        fitted_width = sheet.cells.get_column_width(col)
+        bounded_width = min(max(fitted_width, MIN_COLUMN_WIDTH), MAX_COLUMN_WIDTH)
+        sheet.cells.set_column_width(col, float(bounded_width))
+
+    if sheet.cells.max_data_row < 0:
+        return
+
+    options = cells.AutoFitterOptions()
+    options.auto_fit_merged_cells_type = cells.AutoFitMergedCellsType.EACH_LINE
+    options.auto_fit_wrapped_text_type = cells.AutoFitWrappedTextType.PARAGRAPH
+    sheet.auto_fit_rows(0, sheet.cells.max_data_row, options)
+    for row in range(sheet.cells.max_data_row + 1):
+        fitted_height = sheet.cells.get_row_height(row)
+        required_height = max(
+            MIN_ROW_HEIGHT,
+            estimated_row_height(sheet, row, max_columns),
+        )
+        if fitted_height < required_height:
+            sheet.cells.set_row_height(row, required_height)
+
+    for row in header_rows:
+        fitted_height = sheet.cells.get_row_height(row)
+        if fitted_height < MIN_HEADER_ROW_HEIGHT:
+            sheet.cells.set_row_height(row, MIN_HEADER_ROW_HEIGHT)
+
+
 def export_single_sheet(input_path: Path, output_path: Path):
     metadata, sections = parse_md(input_path)
 
@@ -123,6 +228,7 @@ def export_single_sheet(input_path: Path, output_path: Path):
     )
 
     row = 0
+    header_rows: list[int] = []
 
     title = Path(input_path).stem.replace("_", " ").title()
     cell_collection.get(row, 0).put_value(title)
@@ -162,6 +268,7 @@ def export_single_sheet(input_path: Path, output_path: Path):
         )
         row += 1
 
+        header_rows.append(row)
         for col, header in enumerate(headers):
             cell_collection.get(row, col).put_value(header)
             apply_style(
@@ -190,7 +297,7 @@ def export_single_sheet(input_path: Path, output_path: Path):
 
         row += 1
 
-    sheet.auto_fit_columns(0, max_columns - 1)
+    auto_fit_dimensions(sheet, max_columns, header_rows)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(str(output_path))
 

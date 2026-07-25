@@ -42,23 +42,29 @@ Hard constraints:
 - If the existing `Huawei Cloud Product` cell is empty or unsupported by evidence, keep `Recommended Spec` empty and explain why in `Recommendation Notes`.
 - Keep `Recommended Spec` concise. Put rationale in `Recommendation Notes`, not in the spec cell.
 - Use one migration signal label at the start of each `Recommendation Notes` value: `🟢`, `🟡`, or `🔴`.
+- Treat a serverless-to-fixed/provisioned mapping, in either direction, as `🟡` rather than `🟢` when it is a workable substitute, and explain the service-model and scaling difference. Use `🔴` instead when no defensible substitute exists.
+- Before making a recommendation, run the service-region precheck for every non-empty `Huawei Cloud Product` row and its `HWC Target Region`:
+  `uv run skills/migration-to-huawei-billing-mapper/scripts/check_service_region.py --product "<Huawei Cloud Product>" --region "<HWC Target Region>" --json`
+- The precheck must resolve service codes only from `skills/migration-to-huawei-billing-mapper/data/code.json`. If the matched code has `global: true`, treat it as available without an API request. Otherwise, if the code exists in `skills/migration-to-huawei-billing-mapper/data/product-regions.json`, use that region list first; `all` matches every target region. Only codes absent from both local sources query the API Explorer endpoint catalog. A successful API response containing the target region means the service is available; a successful response without it means the service is unavailable. Request failures, timeouts, invalid JSON, or an unregistered service endpoint default to available and must be recorded as an API-check failure. An unmatched product name is `Skipped`, must be recorded, and must not result in an invented code.
+- For `Unavailable`, leave `Recommended Spec` empty unless official documentation confirms a supported alternative in the same target region. Record the service code, target region, and precheck status in `Recommendation Notes` for every checked row.
 
 Required workflow:
-1. Read `{{DOC_REFERENCE_FILE}}`.
-2. Identify the distinct Huawei Cloud products present in this category.
-3. Fetch the needed official documentation pages for those products.
-4. Save the fetched pages under `{{DOC_CACHE_DIR}}` using stable product-oriented filenames such as `ecs.md`, `evs.md`, or `rds-mysql.md`.
-5. For each row, recommend the closest defensible Huawei Cloud spec by comparing source capacity and product model:
+1. Identify the distinct Huawei Cloud products present in this category.
+2. Run the service-region precheck for each product and target-region pair using `check_service_region.py` and `data/code.json`.
+3. Read `{{DOC_REFERENCE_FILE}}`.
+4. Fetch the needed official documentation pages for those products.
+5. Save the fetched pages under `{{DOC_CACHE_DIR}}` using stable product-oriented filenames such as `ecs.md`, `evs.md`, or `rds-mysql.md`.
+6. For each row, recommend the closest defensible Huawei Cloud spec by comparing source capacity and product model:
    - vCPU and memory
    - storage capacity, media type, IOPS, and throughput
    - bandwidth model and traffic model
    - database engine, edition, topology, and class
    - serverless or managed-service behavior differences
-6. If the mapping is approximate, still fill `Recommended Spec` when defensible, but explain the difference in `Recommendation Notes`.
-7. If no defensible recommendation exists, leave `Recommended Spec` empty and explain the blocker in `Recommendation Notes`.
-8. Add a category-level rationale paragraph at the bottom:
+7. If the mapping is approximate, still fill `Recommended Spec` when defensible, but explain the difference in `Recommendation Notes`.
+8. If no defensible recommendation exists, leave `Recommended Spec` empty and explain the blocker in `Recommendation Notes`.
+9. Add a category-level rationale paragraph at the bottom:
    `**Recommendation rationale:** <2-3 sentences in {{USER_LANGUAGE}}>`
-9. Append a short evidence section after the table so the parent session can audit the sources.
+10. Append a short evidence section after the table so the parent session can audit the sources, including the service-region precheck result for each distinct product and target region.
 
 Output requirements:
 - Write the result to `{{CATEGORY_OUTPUT_FILE}}`.
@@ -92,5 +98,5 @@ Completion checklist:
 When done, return a concise summary with:
 - output file path
 - saved documentation files
-- unresolved rows that still need parent attention
+- unresolved rows that must remain unresolved and be reported by the parent without the parent completing their recommendation work
 ```
