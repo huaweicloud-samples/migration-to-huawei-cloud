@@ -1,0 +1,120 @@
+Huawei Cloud Product,Source Product
+弹性公网IP EIP (按流量计费),Data Transfer
+弹性云服务器ECS,Virtual Machines
+专属主机 DeH,Azure Dedicated Host
+,Azure CycleCloud
+,Batch
+云容器引擎CCE,Azure Kubernetes Service (AKS)
+云容器引擎CCE Autopilot,Container Instances
+容器镜像服务SWR,Container Registry
+华为云UCS,Azure Arc
+函数工作流FunctionGraph,Azure Functions
+云应用引擎 CAE,App Service
+云应用引擎 CAE,Azure Container Apps
+对象存储服务OBS,Azure Blob Storage
+对象存储服务OBS,Azure Data Lake Storage
+对象存储服务OBS,Archive Storage
+云硬盘EVS,Azure Disk Storage
+云硬盘EVS,Azure Elastic SAN
+高性能弹性文件服务 SFS Turbo,Azure Files
+,Azure HPC Cache
+高性能弹性文件服务 SFS Turbo,Azure NetApp Files
+高性能弹性文件服务 SFS Turbo,Avere vFXT for Azure
+云备份 CBR,Azure Backup
+存储容灾服务SDRS,Azure Site Recovery
+,Azure Stack Edge
+数据快递服务 DES,Azure Data Box
+,StorSimple
+虚拟私有云VPC,Virtual Network
+云解析服务DNS,Traffic Manager
+云解析服务DNS,Azure DNS
+弹性负载均衡ELB,Application Gateway
+弹性负载均衡ELB,Load Balancer
+NAT网关NAT,NAT Gateway
+弹性公网IP EIP,Azure public IP
+云专线 DC,Azure ExpressRoute
+虚拟专用网络VPN,VPN Gateway
+VPC终端节点 VPCEP,Azure Private Link
+企业路由器 ER,Virtual WAN
+云连接CC,Virtual WAN
+云连接CC,Azure Network Function Manager
+内容分发网络CDN,Azure Front Door
+,Network Watcher
+,Virtual Network Manager
+内容分发网络CDN,Content Delivery Network (CDN)
+CloudPond,"Azure Stack HCI 
+Azure Stack Hub"
+,Azure Entra ID (formerly Azure AD)
+企业主机安全HSS,Microsoft Defender for Cloud
+云堡垒机 CBH,Azure Bastion
+DDoS防护 AAD,Azure DDoS Protection
+Web应用防火墙WAF,Web Application Firewall (WAF)
+云防火墙 CFW,Azure Firewall
+数据加密服务DEW,Azure Dedicated HSM
+数据加密服务DEW,Key Vault
+数据安全中心DSC,Azure Information Protection
+安全云脑 SecMaster,Microsoft Defender for Cloud
+安全云脑 SecMaster,Microsoft Sentinel
+消息通知服务 SMN,Notification Hubs
+资源编排服务 RFS,"Azure Resource Manager
+Azure Resource Manager templates"
+应用运维管理AOM,Azure Monitor
+云日志服务LTS,Azure Log Analytics
+应用运维管理AOM,Azure Managed Grafana
+云运维中心 COC,"Automation
+Azure Automanage
+Update management center Preview"
+多活高可用服务 MAS,Azure Chaos Studio
+优化顾问 OA,Azure Advisor
+,Azure Service Health
+组织 Organizations,Azure Policy
+资源治理中心 RGC,Azure Blueprints
+,Azure Lighthouse
+云运维中心 COC,Azure Managed Applications
+云数据库 RDS for MySQL,Azure Database for MySQL
+云数据库 RDS for MariaDB,Azure Database for MariaDB
+云数据库 RDS for PostgreSQL,Azure Database for PostgreSQL
+云数据库 RDS for SQL Server,SQL Server on Azure Virtual Machines
+云数据库 RDS for SQL Server,Azure SQL
+云数据库 RDS for SQL Server,Azure SQL Database
+云数据库 RDS for SQL Server,Azure SQL Managed Instance
+云数据库 GeminiDB,Azure Cosmos DB
+文档数据库服务DDS, Azure DocumentDB
+云数据库 GeminiDB Cassandra,Azure Managed Instance for Apache Cassandra
+云数据库 GeminiDB Influx,Azure Time Series Insights
+分布式缓存服务Redis,Azure Cache for Redis
+分布式缓存服务Redis,Azure Managed Redis
+数据复制服务DRS,Azure Database Migration Service
+MapReduce服务 MRS,Azure Databricks
+MapReduce服务 MRS,HDInsight
+数据仓库服务 DWS,Azure Synapse Analytics
+,Table Storage
+数据湖探索DLI,Azure Stream Analytics
+数据湖探索DLI,Data Lake Analytics
+云搜索服务CSS,Azure Cognitive Search
+分布式消息服务DMS,Event Hubs
+云数据迁移CDM,Azure Data Factory
+数据湖治理中心DataArts Studio,Microsoft Purview
+AI开发平台ModelArts,Azure Machine Learning
+内容审核 Moderation,Azure AI Content Safety Preview
+分布式消息服务DMS,Service Bus
+分布式消息服务DMS,Queue Storage
+分布式消息服务DMS,Azure Web PubSub
+事件网格 EG,Event Grid
+API网关APIG,API Management
+,Logic Apps
+软件开发生产线 CodeArts,Azure DevOps
+需求管理 CodeArts Req,Azure Boards
+代码托管 CodeArts Repo,Azure Repos
+流水线 CodeArts Pipeline,Azure Pipelines
+测试计划 CodeArts TestPlan,Azure Test Plans
+部署 CodeArts Deploy,Azure Pipelines
+性能测试 CodeArts PerfTest,Azure Load Testing
+制品仓库 CodeArts Artifact,Azure Artifacts
+媒体处理 MPC,Video Indexer
+媒体处理 MPC,Media Services
+云桌面 Workspace,Azure Virtual Desktop
+设备接入IoTDA,Azure IoT Hub
+,Azure IoT Edge
+主机迁移服务 SMS,Azure Migrate
+云数据迁移CDM,Azure Data Factory
