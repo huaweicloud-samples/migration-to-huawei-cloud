@@ -11,12 +11,14 @@ Use this module when the billing data or resource inventory clearly comes from M
 - Cost Management or Cost Details fields such as `SubscriptionId`, `ResourceLocation`, `MeterCategory`, `MeterSubCategory`, `MeterName`, `ProductName`, `ConsumedService`, and `CostInBillingCurrency`
 - Region display names or programmatic names such as `Southeast Asia` / `southeastasia`, `East US 2` / `eastus2`, and `West Europe` / `westeurope`
 
+Azure billing workbooks must first pass `scripts/summarize_azure_billing.py`. The preprocessed CSVs contain the canonical fields used by the shared workflow: `Meter Category`, `Meter Sub Category`, `Region`, `Resource URI`, `Term And Billing Cycle`, `Usage Quantity`, `Unit`, and a `Total Sales Price (...)` column.
+
 ## Parsing Hints
 
-- Prefer the canonical Azure service family in `ProductName`, `ServiceName`, or `MeterCategory` for `Source Product`. Remove plan, tier, and meter detail when it obscures the service name.
-- Put SKU, meter, tier, reservation, operating-system, and instance-size detail in `Source Spec`. Useful fields include `SkuName`, `MeterSubCategory`, `MeterName`, `ProductName`, `PublisherType`, and `PricingModel`.
+- Prefer the canonical Azure service family in `Meter Category` (and, when needed, `ProductName`, `ServiceName`, or `MeterCategory` from the source workbook) for `Source Product`. Remove plan, tier, and meter detail when it obscures the service name.
+- Put SKU, meter, tier, reservation, operating-system, and instance-size detail in `Source Spec`. In preprocessed data, use `Meter Sub Category`, `Term And Billing Cycle`, and the preserved resource context; useful source-workbook fields include `SkuName`, `MeterSubCategory`, `MeterName`, `ProductName`, `PublisherType`, and `PricingModel`.
 - Preserve `ResourceId` or resource-group context in `Notes` when it is needed to distinguish resources, but do not expose subscription IDs or other identifiers unnecessarily.
-- Use `ResourceLocation` as the row region. If it is empty, use immediate resource or meter context; do not substitute the subscription's home region.
+- Use the preprocessed `Region` as the row region. It comes from the workbook's row-level region field; if it is empty, use immediate resource or meter context and do not substitute the subscription's home region.
 - Azure exports may contain amortized, actual, reservation, savings-plan, marketplace, tax, or credit rows. State which cost basis is used and avoid adding mutually exclusive cost views together.
 - The fixed output column is `Monthly (USD)`. When the export currency is not USD, convert with a user-provided or explicit documented rate and record the rate/date in metadata. Otherwise stop and ask for a USD export or conversion basis instead of relabeling the source currency as USD.
 

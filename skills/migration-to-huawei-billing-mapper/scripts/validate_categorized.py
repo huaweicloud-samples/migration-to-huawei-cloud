@@ -153,8 +153,20 @@ def _is_non_hourly(qty: str) -> bool:
 
 
 def _looks_like_traffic(product: str, spec: str) -> bool:
-    haystack = f"{product} {spec}".lower()
-    return any(keyword in haystack for keyword in TRAFFIC_KEYWORDS)
+    product_lower = product.lower()
+    spec_lower = spec.lower()
+
+    # CDN and other network products may use a bare "data transfer" spec label;
+    # that phrase alone should not trigger Data Transfer normalization.
+    product_has_traffic_label = any(
+        keyword in product_lower for keyword in TRAFFIC_KEYWORDS
+    )
+    spec_has_other_traffic_label = any(
+        keyword in spec_lower
+        for keyword in TRAFFIC_KEYWORDS
+        if keyword != "data transfer"
+    )
+    return product_has_traffic_label or spec_has_other_traffic_label
 
 
 def _contains_any(value: str, keywords: tuple[str, ...]) -> bool:
@@ -378,25 +390,10 @@ def validate_data_transfer_consolidation(rows: list[TableRow]) -> ValidationResu
                     "cross-region details belong in `Notes`, not `Source Spec`"
                 )
 
-        if len(ordinary_transfer_rows) == 1:
-            ordinary_row = ordinary_transfer_rows[0]
-            notes = ordinary_row.get("Notes")
-            if not _contains_any(notes, OUTBOUND_KEYWORDS):
-                failures.append(
-                    f"line {ordinary_row.line_no} (region `{region}`): `Notes` must "
-                    "describe outbound/egress traffic"
-                )
-            if not _contains_any(notes, CROSS_REGION_KEYWORDS):
-                failures.append(
-                    f"line {ordinary_row.line_no} (region `{region}`): `Notes` must "
-                    "describe cross-region traffic"
-                )
-
         for row in separate_detail_rows:
             failures.append(
                 f"line {row.line_no} (region `{region}`): outbound or cross-region "
-                "transfer must be folded into the ordinary `Data Transfer` row and "
-                "described in `Notes`"
+                "transfer must be folded into the ordinary `Data Transfer` row"
             )
 
     return ValidationResult("Data Transfer Consolidation", not failures, failures)

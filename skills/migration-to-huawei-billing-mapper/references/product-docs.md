@@ -9,7 +9,7 @@
 |-----------------|------------------|-------|
 | ECS (Elastic Cloud Server) | https://support.huaweicloud.com/intl/en-us/productdesc-ecs/ecs_01_0014.html | — |
 | EVS (Elastic Volume Service) | https://support.huaweicloud.com/intl/en-us/productdesc-evs/en-us_topic_0014580744.html | — |
-| RDS (Relational Database Service) | [PostgreSQL](https://support.huaweicloud.com/intl/en-us/productdesc-rds-pg/rds_01_0035.html) [MySQL](https://support.huaweicloud.com/intl/en-us/productdesc-rds-mysql/rds_01_0034.html) [DB storage](https://support.huaweicloud.com/intl/en-us/productdesc-rds-mysql/rds_01_0020.html) [MariaDB](https://support.huaweicloud.com/intl/en-us/productdesc-rds-mariadb/rds_01_0070.html) | — |
+| RDS (Relational Database Service) | [PostgreSQL](https://support.huaweicloud.com/intl/en-us/productdesc-rds-pg/rds_01_0035.html) [MySQL](https://support.huaweicloud.com/intl/en-us/productdesc-rds-mysql/rds_01_0034.html) [DB storage](https://support.huaweicloud.com/intl/en-us/productdesc-rds-mysql/rds_01_0020.html) [MariaDB](https://support.huaweicloud.com/intl/en-us/productdesc-rds-mariadb/rds_01_0070.html) [SQL Server](https://support.huaweicloud.com/intl/zh-cn/productdesc-rds-mssql/rds_01_0036.html) | SQL Serever in the the international site are only available for whitelisting users. |
 | TaurusDB | https://support.huaweicloud.com/intl/en-us/productdesc-taurusdb/taurusdb_01_0004.html [DB storage](https://support.huaweicloud.com/intl/en-us/productdesc-taurusdb/taurusdb_01_1000.html) [Serverless](https://support.huaweicloud.com/intl/en-us/price-taurusdb/taurusdb_00_0024.html) | Region support may be limited. Check the [official docs](https://support.huaweicloud.com/intl/en-us/usermanual-taurusdb/taurusdb_02_0210.html) for supported regions before recommending. Do not recommend TaurusDB if the target migration region is not listed as supported. |
 | DCS | https://support.huaweicloud.com/intl/en-us/productdesc-dcs/dcs-pd-0522002.html | Does not support serverless. Do not present as a serverless equivalent in recommendation notes. |
 | Distributed Message Service for Kafka | [Single node](https://support.huaweicloud.com/intl/en-us/productdesc-kafka/kafka-pd-0056.html) [Cluster](https://support.huaweicloud.com/intl/en-us/productdesc-kafka/Kafka-specification.html) | Does not support serverless. Do not present as a serverless equivalent in recommendation notes. |
@@ -32,3 +32,4 @@ These services are often mapped during migration but typically do not need a fla
 - DNS
 - SWR
 - CES
+- COC

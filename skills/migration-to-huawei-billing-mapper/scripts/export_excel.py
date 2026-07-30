@@ -29,6 +29,10 @@ RATIONALE_LABEL_RE = re.compile(
     r"^(?:Recommendation\s+rationale|推荐说明|推荐理由|推荐依据)\s*[:：]",
     re.IGNORECASE,
 )
+ALTERNATIVE_HEADING_RE = re.compile(
+    r"^##\s+(?:替代方案参考|Alternative Solutions?)\s*$",
+    re.IGNORECASE,
+)
 
 
 def clean_md_text(text: str) -> str:
@@ -45,8 +49,24 @@ def parse_rationale_line(line: str) -> str | None:
     return cleaned if RATIONALE_LABEL_RE.match(cleaned) else None
 
 
-def parse_md(md_path: Path) -> tuple[list[str], list[dict]]:
-    """Parse metadata lines, section tables, and section rationale."""
+def parse_alternative_section(lines: list[str]) -> list[str]:
+    """Return the standalone alternative-solution section for Excel export."""
+    for index, line in enumerate(lines):
+        if not ALTERNATIVE_HEADING_RE.match(line.strip()):
+            continue
+
+        section_lines = [line.strip()]
+        for candidate in lines[index + 1 :]:
+            if candidate.strip().startswith("## "):
+                break
+            if candidate.strip():
+                section_lines.append(candidate.strip())
+        return section_lines
+    return []
+
+
+def parse_md(md_path: Path) -> tuple[list[str], list[dict], list[str]]:
+    """Parse metadata, inventory tables, rationale, and alternatives."""
     content = md_path.read_text(encoding="utf-8")
     lines = content.splitlines()
 
@@ -112,7 +132,7 @@ def parse_md(md_path: Path) -> tuple[list[str], list[dict]]:
 
         i += 1
 
-    return metadata, sections
+    return metadata, sections, parse_alternative_section(lines)
 
 
 def apply_style(target, *, bold=False, font_size=None, bg=None, wrap=True):
@@ -215,7 +235,7 @@ def auto_fit_dimensions(sheet, max_columns: int, header_rows: list[int]):
 
 
 def export_single_sheet(input_path: Path, output_path: Path):
-    metadata, sections = parse_md(input_path)
+    metadata, sections, alternatives = parse_md(input_path)
 
     workbook = cells.Workbook()
     sheet = workbook.worksheets[0]
@@ -293,9 +313,31 @@ def export_single_sheet(input_path: Path, output_path: Path):
                 font_size=11,
                 bg=0xF7F3E8,
             )
-            row += 1
+        row += 1
 
         row += 1
+
+    if alternatives:
+        cell_collection.get(row, 0).put_value(clean_md_text(alternatives[0]))
+        cell_collection.merge(row, 0, 1, max_columns)
+        apply_style(
+            cell_collection.get(row, 0),
+            bold=True,
+            font_size=13,
+            bg=0xD9EAF7,
+        )
+        row += 1
+
+        for alternative_line in alternatives[1:]:
+            cell_collection.get(row, 0).put_value(clean_md_text(alternative_line))
+            cell_collection.merge(row, 0, 1, max_columns)
+            apply_style(
+                cell_collection.get(row, 0),
+                bold=alternative_line.startswith("### "),
+                font_size=11,
+                bg=0xF7F3E8,
+            )
+            row += 1
 
     auto_fit_dimensions(sheet, max_columns, header_rows)
     output_path.parent.mkdir(parents=True, exist_ok=True)

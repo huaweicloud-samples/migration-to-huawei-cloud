@@ -45,7 +45,8 @@ VPC终端节点 VPCEP,Azure Private Link
 CloudPond,"Azure Stack HCI 
 Azure Stack Hub"
 ,Azure Entra ID (formerly Azure AD)
-企业主机安全HSS,Microsoft Defender for Cloud
+企业主机安全HSS,Microsoft Defender for Servers
+企业主机安全HSS,Microsoft Defender for Containers
 云堡垒机 CBH,Azure Bastion
 DDoS防护 AAD,Azure DDoS Protection
 Web应用防火墙WAF,Web Application Firewall (WAF)
@@ -53,7 +54,6 @@ Web应用防火墙WAF,Web Application Firewall (WAF)
 数据加密服务DEW,Azure Dedicated HSM
 数据加密服务DEW,Key Vault
 数据安全中心DSC,Azure Information Protection
-安全云脑 SecMaster,Microsoft Defender for Cloud
 安全云脑 SecMaster,Microsoft Sentinel
 消息通知服务 SMN,Notification Hubs
 资源编排服务 RFS,"Azure Resource Manager
@@ -78,8 +78,8 @@ Update management center Preview"
 云数据库 RDS for SQL Server,Azure SQL
 云数据库 RDS for SQL Server,Azure SQL Database
 云数据库 RDS for SQL Server,Azure SQL Managed Instance
-云数据库 GeminiDB,Azure Cosmos DB
-文档数据库服务DDS, Azure DocumentDB
+云数据库 GeminiDB Cassandra,Azure Cosmos DB
+文档数据库服务DDS,Azure DocumentDB
 云数据库 GeminiDB Cassandra,Azure Managed Instance for Apache Cassandra
 云数据库 GeminiDB Influx,Azure Time Series Insights
 分布式缓存服务Redis,Azure Cache for Redis
@@ -88,7 +88,7 @@ Update management center Preview"
 MapReduce服务 MRS,Azure Databricks
 MapReduce服务 MRS,HDInsight
 数据仓库服务 DWS,Azure Synapse Analytics
-,Table Storage
+云数据库 GeminiDB Cassandra,Table Storage
 数据湖探索DLI,Azure Stream Analytics
 数据湖探索DLI,Data Lake Analytics
 云搜索服务CSS,Azure Cognitive Search
@@ -118,3 +118,4 @@ API网关APIG,API Management
 ,Azure IoT Edge
 主机迁移服务 SMS,Azure Migrate
 云数据迁移CDM,Azure Data Factory
+数据库安全服务 DBSS,Microsoft Defender for SQL

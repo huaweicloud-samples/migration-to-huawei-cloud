@@ -82,8 +82,8 @@ Amazon Aurora Serverless v2
 Amazon Aurora Serverless"
 云数据库GaussDB,Amazon RDS for Oracle
 文档数据库服务 DDS,Amazon DocumentDB (with MongoDB compatibility)
-云数据库GeminiDB Cassandra,"Amazon DynamoDB
-Amazon Keyspaces (for Apache Cassandra)"
+云数据库GeminiDB DynamoDB,Amazon DynamoDB
+云数据库GeminiDB Cassandra,Amazon Keyspaces (for Apache Cassandra)
 云数据库GeminiDB Influx,Amazon Timestream
 分布式缓存服务 Redis,"Amazon ElastiCache
 Amazon ElastiCache for Redis

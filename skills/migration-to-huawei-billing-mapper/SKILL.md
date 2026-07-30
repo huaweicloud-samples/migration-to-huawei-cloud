@@ -1,13 +1,13 @@
 ---
 name: migration-to-huawei-billing-mapper
-description: Use when users provide billing reports, Cost Management exports, or resource inventories from AWS, Microsoft Azure, or another source cloud and need to migrate to Huawei Cloud, including product matching, regional mapping, per-category sub-agent spec recommendation, and exportable migration inventory generation. Use this skill for Azure bills even when the input is described only as a Cost Details export, usage CSV, subscription inventory, or resource export.
+description: Use when users provide billing reports, Cost Management exports, or resource inventories from AWS, Microsoft Azure, or another source cloud and need to migrate to Huawei Cloud, including product matching, regional mapping, per-category sub-agent spec recommendation, and exportable migration inventory generation. Azure billing analysis in this skill accepts only preprocessable `.xlsx` workbooks.
 ---
 
 # Source Cloud to Huawei Cloud Billing Migration
 
 ## Overview
 
-8-step pipeline that converts a source-cloud billing file or resource export into a categorized, reviewed, Huawei-Cloud-matched inventory plus Excel export.
+9-step pipeline that converts a source-cloud billing file or resource export into a categorized, reviewed, Huawei-Cloud-matched inventory, an alternative-solution section, and an Excel export.
 
 ```text
 Input: source-cloud billing file / resource inventory
@@ -18,8 +18,9 @@ Input: source-cloud billing file / resource inventory
   -> Step 5: Spec Recommendation (tool discovery + per-category child agents + Huawei docs)
   -> Step 6: Availability Check (check_availability.py)
   -> Step 7: Review and Replace Unavailable Specs (agent review)
-  -> Step 8: Excel Export (export_excel.py)
-Output: Final inventory MD with availability status + single-sheet Excel
+  -> Step 8: Alternative Solution Review (alternative-solutions.md)
+  -> Step 9: Excel Export (export_excel.py)
+Output: Final inventory MD with availability status and alternative solutions + single-sheet Excel
 ```
 
 ### Supported Source-Cloud Modules
@@ -71,7 +72,10 @@ Detect and handle at runtime:
   Verify: `hcloud configure list` shows `language: "cn"`
 - `Aspose.Cells Python`
   Check: `uv run --with aspose-cells-python python -c "import aspose.cells"`
-  Install: auto-installed by `uv run` in Step 8.
+  Install: auto-installed by `uv run` in Step 9.
+- Azure workbook preprocessing dependencies
+  Check: `uv run --with pandas --with openpyxl python -c "import pandas, openpyxl"`
+  The Azure preprocessor is `scripts/summarize_azure_billing.py` and is mandatory for Azure `.xlsx` input.
 
 Check all prerequisites before starting. If `hcloud` is missing, note that Step 6 and Step 7 may both be skipped. If `hcloud` is present but not configured with `cli-lang=cn`, set it before Step 6 because this workflow depends on the current Chinese KooCLI command surface, including `DCS ListFlavors`.
 
@@ -81,7 +85,7 @@ Check all prerequisites before starting. If `hcloud` is missing, note that Step 
 
 ### Step 1: Billing Source to Raw Markdown
 
-**Goal:** Convert the user-provided source-cloud billing or inventory file into raw Markdown text, then use that raw content to detect the source cloud and select the correct source-specific module. The input is not limited to PDF: use `markitdown` for any document or data format supported by the installed version. If the input is already clean Markdown or plain structured text, it may be normalized directly without reconversion.
+**Goal:** Convert the user-provided source-cloud billing or inventory file into raw Markdown text, then use that raw content to detect the source cloud and select the correct source-specific module. The Azure preprocessing gate applies only after the source has been identified as an Azure bill. Ordinary spreadsheets and non-Azure billing files continue through the shared conversion path.
 
 After `output/billing_raw.md` is produced, determine whether the input comes from AWS, Microsoft Azure, or an unsupported source cloud, then load the correct source-specific hints, mapping CSV, and region-normalization data.
 
@@ -91,16 +95,35 @@ Detection signals:
 - Region formats, such as AWS `us-east-1` or Azure `southeastasia` / `Southeast Asia`
 - Export format names, service namespaces, invoice branding, Azure resource IDs, or Cost Management fields
 
+For an Excel workbook, perform a lightweight header/content inspection before choosing the parser. Strong Azure billing evidence includes several fields such as `Meter Category`, `Meter Sub Category`, `Region`, `Resource URI`, `Term And Billing Cycle`, `Usage Quantity`, `Unit`, and `Total Sales Price (...)`, or clear Azure resource and Cost Management identifiers. A generic table, inventory workbook, or spreadsheet containing only common columns such as `Name`, `Region`, `Quantity`, or `Cost` is not Azure by default and must continue through the general spreadsheet path.
+
 Use the selected module only for source-cloud-specific parsing, alias recognition, traffic normalization hints, and product mapping CSV selection. The rest of the pipeline remains shared.
 
-**Use `markitdown` as the default converter for supported inputs:**
+**Azure input gate (mandatory after Azure detection).** First inspect the input using the normal source-cloud detection signals above. Do not classify a file as Azure merely because it is a spreadsheet or contains generic cost columns. When the evidence identifies Microsoft Azure, do not use `markitdown`, PDF OCR, CSV parsing, or direct Markdown normalization as an alternative. The only accepted Azure billing input is an `.xlsx` workbook, and it must be preprocessed before any categorization:
+
+```bash
+mkdir -p output/azure_billing_summary
+uv run skills/migration-to-huawei-billing-mapper/scripts/summarize_azure_billing.py \
+  <azure-billing.xlsx> \
+  --output-dir output/azure_billing_summary
+```
+
+The preprocessor reads every worksheet and emits one summarized CSV per worksheet. It validates the required Azure billing columns, the `Total Sales Price` column, numeric `Usage Quantity` and price values, and consistent `Unit` values within each grouping. Treat any non-zero exit status as a blocking failure. Do not continue to Step 2, do not attempt OCR or another parser, and tell the user that Azure analysis was stopped because the workbook could not be preprocessed; include the command's concrete error. Do not claim that an Azure result was produced.
+
+After preprocessing succeeds, read every CSV in `output/azure_billing_summary/` and combine their detailed rows into `output/billing_raw.md`. Preserve the worksheet origin in the raw content or notes so that each row remains traceable. The summarized CSVs, rather than the original workbook's unvalidated contents, are the input to Step 2.
+
+Each summarized CSV combines the Azure `Meter Category` and `Meter Sub Category` values into one `Category (Sub Category)` column, for example `Compute (Virtual Machines)`. The source workbook still requires both input columns, and grouping remains distinct by both values.
+
+If the source has been identified as Azure and the input is not `.xlsx`, stop immediately with a message that Azure billing analysis currently accepts Excel `.xlsx` workbooks only. A file extension alone is not sufficient: an unreadable, empty, malformed, or structurally incompatible workbook also fails the gate. If the input is a normal table or a billing file from another source cloud, do not apply this Azure gate; use the general conversion and source-cloud detection path instead.
+
+**Use `markitdown` as the default converter for non-Azure supported inputs:**
 
 ```bash
 mkdir -p output
 markitdown <user-provided-billing-file> > output/billing_raw.md
 ```
 
-Do not infer that the source must be a PDF from the use of `markitdown`. The command may receive supported spreadsheet, document, presentation, web, text, image, or other billing-export formats. Inspect the installed `markitdown` version when format support is uncertain.
+Do not infer that the source must be a PDF from the use of `markitdown`. For non-Azure inputs, the command may receive supported spreadsheet, document, presentation, web, text, image, or other billing-export formats. Inspect the installed `markitdown` version when format support is uncertain. Do not pass an identified Azure workbook through this generic branch.
 
 **OCR fallback path for scanned or partially extractable PDFs.** If `markitdown` produces empty output, obvious parsing errors, or only a partial first-page summary, generate a searchable PDF with a text layer by using forced OCR and rerun `markitdown` on that new PDF. See `references/ocr-billing-pdf.md`.
 
@@ -119,15 +142,15 @@ Requires an OCR stack when OCR is needed. Before running OCR, verify that `ocrmy
 
 Use this decision tree:
 
-1. Identify the input format and run `markitdown` directly when that format is supported. For already clean Markdown or plain structured text, direct normalization is also acceptable.
+1. Identify the source cloud from the content and format signals. If it is Azure, apply the Azure input gate above before conversion. For an ordinary table or non-Azure input, run `markitdown` directly when the format is supported. For already clean Markdown or plain structured text, direct normalization is also acceptable.
 2. Inspect `output/billing_raw.md`.
 3. Treat direct extraction as `FAIL` if any of these are true:
    - The file is empty or `markitdown` errors
    - The output is suspiciously short relative to the source, or contains mostly summary text instead of billing detail
    - The output contains branding and totals but not detailed usage rows, service sections, regions, quantities, or SKU-like descriptions
-4. If the failed or incomplete input is a PDF, run `ocrmypdf --force-ocr --deskew --rotate-pages -l chi_sim+eng input.pdf output/billing_searchable.pdf`, then rerun `markitdown`.
-5. If the input is not a PDF, do not use the PDF OCR branch. Use a format-appropriate structured parser or normalize the source directly when practical; otherwise ask for another MarkItDown-supported or structured export.
-6. Treat forced OCR as the default OCR mode once a PDF enters the OCR branch, because billing PDFs often contain vector pages that otherwise get skipped or only partially extracted.
+4. If a failed or incomplete non-Azure input is a PDF, run `ocrmypdf --force-ocr --deskew --rotate-pages -l chi_sim+eng input.pdf output/billing_searchable.pdf`, then rerun `markitdown`.
+5. If a failed or incomplete non-Azure input is not a PDF, use a format-appropriate structured parser or normalize the source directly when practical; otherwise ask for another supported export. Azure does not enter either fallback branch: preprocessing failure is terminal.
+6. Treat forced OCR as the default OCR mode once a non-Azure PDF enters the OCR branch, because billing PDFs often contain vector pages that otherwise get skipped or only partially extracted.
 
 **Verify output** before proceeding:
 
@@ -139,9 +162,9 @@ Use this decision tree:
 Examples:
 
 - AWS: `EC2`, `S3`, `RDS`, `Lambda`, `us-east-1`, Cost Explorer / CUR fields
-- Microsoft Azure: `Virtual Machines`, `Blob Storage`, `Azure SQL`, `ResourceLocation`, `/subscriptions/.../providers/...`
+- Microsoft Azure after preprocessing: `Meter Category`, `Meter Sub Category`, `Region`, `Resource URI`, `Usage Quantity`, `Total Sales Price`
 
-If PDF OCR plus `markitdown` still fails, or a non-PDF format cannot be converted or normalized reliably, ask the user for another supported billing export, pricing export, structured resource inventory, or screenshots.
+If non-Azure PDF OCR plus `markitdown` still fails, or a non-PDF format cannot be converted or normalized reliably, ask the user for another supported billing export, pricing export, structured resource inventory, or screenshots. For Azure, report the preprocessing failure and stop; ask the user to provide a valid `.xlsx` workbook only if they want to retry.
 
 **Output:** `output/billing_raw.md`
 
@@ -241,8 +264,9 @@ The validator checks rule-shaped constraints such as:
 - Non-hourly rows incorrectly using non-`—` resource counts
 - `Category` column staying consistent within each section; section titles themselves may be localized
 - Supported traffic-normalization rows (`Data Transfer` and NAT processed traffic) that were not normalized to `Source Product = Data Transfer`
+- A `data transfer` phrase in `Source Spec` alone does not trigger normalization for another product such as CDN; NAT processed labels in `Source Spec` remain checked
 - Data Transfer consolidation count per `Region`: one ordinary row without NAT in that region, or one ordinary row plus one NAT processed row when NAT is present there; different regions may repeat this structure
-- Outbound/egress and cross-region transfer details left as separate rows, left in `Source Spec`, or missing from the ordinary Data Transfer row's `Notes`
+- Outbound/egress and cross-region transfer details left as separate rows or left in `Source Spec`
 - `Monthly (USD)` formatting
 
 If the validator reports any `FAIL`, edit `output/billing_categorized.md` in place and rerun it. Do not proceed while any validator failure remains.
@@ -655,9 +679,72 @@ If anything is unsupported, overstated, region-incompatible, or unclear, modify 
 
 ---
 
-### Step 8: Export Excel
+### Step 8: Review Alternative Solutions
 
-**Goal:** Export the final Markdown inventory to a single-sheet Excel workbook.
+**Goal:** After the direct product/spec recommendation and availability review are complete, identify resources whose direct migration is too different, unavailable, or uneconomical at the observed usage level, and add evidence-backed alternative paths to the final Markdown report.
+
+**Reference guide:** `skills/migration-to-huawei-billing-mapper/references/alternative-solutions.md`
+
+This is an agent-driven review step. Read the full `output/billing_final.md` and the reference guide before editing. Review every row with one or more of the following signals:
+
+- `Recommendation Notes` begins with `🟡` or `🔴`
+- `Availability` is `Unavailable`, `Flavor Not Found`, or `Not Detected`, or service-region support could not be confirmed
+- The source service is serverless but the direct target is fixed/provisioned, or the reverse
+- The direct target requires self-managed deployment, significant data-model/application changes, or a large operational burden
+- The observed usage is small enough that a lower-cost or simpler Huawei Cloud service may satisfy the stated business need
+
+Do not generate an alternative for every row. A `🟢` near like-for-like mapping normally needs no alternative. Do not infer “high cost” from the source product name alone: use `Monthly (USD)`, `Qty`, resource count, source spec, observed capacity, and the direct recommendation notes. If utilization, retention, throughput, RTO/RPO, or compliance requirements are missing, record the missing business input as a validation item instead of claiming a cost saving.
+
+#### 8.1 Review and Evidence Rules
+
+For each candidate:
+
+1. Extract the required business capability from the source row: throughput, latency, persistence, ordering, retry/dead-letter behavior, HA, elasticity, data volume, connections, compliance, and operations ownership.
+2. Compare the direct recommendation with the source service model and actual scale. Include “keep the direct recommendation” as one candidate path.
+3. Use only patterns supported by `references/alternative-solutions.md`, the local `output/spec-docs/` cache, and official Huawei Cloud documentation. Fetch and save any missing official pages before writing the recommendation.
+4. Prefer the smallest architecture that preserves the required capability. Record at least the key migration impact, function gap, application changes, operations changes, cost dimensions to recalculate, and validation work.
+5. Mark the alternative `🟡` when it is workable but needs application or operations adaptation; mark it `🔴` when no defensible managed equivalent exists or redesign/self-management is required.
+
+The guide's example is mandatory to apply carefully: low-volume serverless messaging may use DCS Redis as a lightweight buffer only when short retention and application-managed acknowledgement/retry are acceptable. DCS Redis must not be described as a serverless MQ or full MQ equivalent. When durable retention, strict ordering, consumer groups, dead-lettering, audit replay, or high throughput is required, evaluate DMS for Kafka/RabbitMQ or leave the resource unresolved for specialist review.
+
+#### 8.2 Required Report Section
+
+Append the alternatives after all category tables and their recommendation rationales in `output/billing_final.md` under exactly one independent section:
+
+```markdown
+## 替代方案参考
+
+### 方案 1：<源产品/资源> 的替代路径
+
+- **触发资源**：<Category / # / Source Product / Source Spec / Region>
+- **触发原因**：<差异过大、目标区域不可用、成本过高或其他可核验原因>
+- **直接迁移结论**：<保留推荐 / 不建议直接迁移 / 待确认>
+- **建议方案**：<Huawei Cloud 产品或组合，以及核心架构变化>
+- **适用前提**：<吞吐、数据量、持久性、HA、延迟、合规等前提>
+- **主要差异与改造**：<服务模型、功能缺口、应用改造、运维责任>
+- **成本判断**：<成本方向和需重新测算的计费项，不虚构价格>
+- **风险与验证**：<PoC、压测、故障演练、数据校验或业务确认项>
+- **证据**：<本地缓存文件和/或官方文档 URL>
+- **迁移信号**：🟡 / 🔴
+```
+
+Use the user's language for all prose in this section. Keep the fixed inventory table headers unchanged. Preserve the original resource row and `Monthly (USD)` values; an alternative is an additional decision aid, not a replacement of billing data. A single subsection may group rows from the same migration pattern, but must list every triggering row number and region. Give at most one recommended alternative and two brief fallback directions per subsection. If no defensible alternative exists, add a subsection stating that the resource remains unresolved and why.
+
+The final Markdown report must contain the section even when no row qualifies, using:
+
+```markdown
+## 替代方案参考
+
+暂无需要单独设计替代方案的资源。现有直接迁移建议均已完成可用性复核，或缺少足够的业务容量/合规信息进行安全替代判断。
+```
+
+**Input:** `output/billing_final.md` after Step 7 review
+
+**Output:** `output/billing_final.md` with the appended `## 替代方案参考` section
+
+### Step 9: Export Excel
+
+**Goal:** Export the final Markdown inventory, including its alternative-solution section, to a single-sheet Excel workbook.
 
 Excel layout requirements:
 
@@ -665,6 +752,7 @@ Excel layout requirements:
 - The file title should be written as a merged row spanning the effective table width
 - Metadata blockquote lines near the top of the Markdown should be exported as merged full-width rows so `Source Cloud`, `Total Monthly`, and similar summary fields are easy to read and edit
 - Each category's `**Recommendation rationale:** ...` paragraph should be exported immediately after that category table as a merged full-width row
+- The `## 替代方案参考` section and its bullet paragraphs should be exported after the category tables as merged full-width rows; the section is report content, not an inventory table
 - Table headers and resource rows remain unmerged regular cells
 - Column widths should adapt to their contents within a readable minimum and maximum; long values should wrap instead of creating excessively wide columns
 - Every content row, including merged metadata and rationale rows, should adapt its height to the wrapped content
@@ -686,17 +774,20 @@ uv run skills/migration-to-huawei-billing-mapper/scripts/export_excel.py \
 ## Region Handling
 
 - Extract the source region per billing row from the row itself or its immediate billing context
-- Normalize the value with the selected source module before comparing geography; for Azure, use `data/source-clouds/azure-regions.csv` to resolve both display and programmatic names
+- Normalize the value with the selected source module before comparing geography; for Azure, use the preprocessed `Region` value and `data/source-clouds/azure-regions.csv` to resolve both display and programmatic names
 - Map that row to the nearest Huawei Cloud region using `references/regions.md`
 - If a specific row has no determinable region, default to `ap-southeast-3` with an explicit note
 - Do not collapse multiple source regions into a single row; apply the Data Transfer consolidation rule independently within each source region
 
 ## Error Handling
 
-- If `markitdown` fails or produces incomplete output, first distinguish PDF inputs from other supported formats
-- For PDF inputs only, switch to the searchable-PDF OCR path in Step 1; for non-PDF inputs, use format-appropriate structured normalization or request another supported export
-- If PDF OCR plus `markitdown` still fails, ask for a structured export instead
+- After Azure is positively identified, require a `.xlsx` workbook and a successful `scripts/summarize_azure_billing.py` run before Step 2; any Azure preprocessing failure is terminal
+- Do not reject an ordinary spreadsheet solely because it is not an Azure billing workbook; route it through the general supported-input conversion path
+- If `markitdown` fails or produces incomplete output for non-Azure input, first distinguish PDF inputs from other supported formats
+- For non-Azure PDF inputs only, switch to the searchable-PDF OCR path in Step 1; for other non-Azure inputs, use format-appropriate structured normalization or request another supported export
+- If non-Azure PDF OCR plus `markitdown` still fails, ask for a structured export instead
 - If Step 3 or Step 7 finds inconsistencies, correct the file in place before continuing
+- If Step 8 finds a high-risk or high-cost direct mapping, append the evidence-backed alternative section to `billing_final.md`; do not overwrite the original inventory row or fabricate a cost comparison
 - If CSV matching returns many blanks, continue with those rows left blank; do not manually invent Huawei Cloud product mappings in Step 4
 - If `hcloud` is not available, Step 6 and Step 7 may both be skipped; keep only documentation-backed recommendations and note that availability was not verified
 - If `hcloud` is installed but `cli-lang` is not `cn`, switch it to Chinese before Step 6 so DCS flavor checks and other current CLI behaviors stay consistent with this skill
@@ -706,6 +797,7 @@ uv run skills/migration-to-huawei-billing-mapper/scripts/export_excel.py \
 
 ```text
 output/
+├── azure_billing_summary/  # Azure only: one preprocessed CSV per worksheet
 ├── billing_raw.md
 ├── billing_categorized.md
 ├── billing_matched.md
@@ -721,5 +813,6 @@ output/
 2. Parse Markdown tables with a real CSV/pipe-aware approach. Do not split mapping CSV rows manually.
 3. Keep fixed schema headers in English even when the user speaks another language.
 4. Do not overstate non-1:1 mappings as direct replacements.
-5. For Azure, distinguish the canonical service family from SKU and meter text, and normalize `ResourceLocation` before selecting the Huawei Cloud target region.
-6. Never relabel a non-USD Azure `CostInBillingCurrency` value as `Monthly (USD)` without an explicit conversion basis.
+5. Use the alternative-solution guide only for material mismatches, unavailable targets, or evidence-backed cost/model concerns; do not create alternatives mechanically for every row.
+6. For Azure, distinguish the canonical service family from SKU and meter text, and normalize the preprocessed `Region` before selecting the Huawei Cloud target region.
+7. Never relabel a non-USD Azure `CostInBillingCurrency` value as `Monthly (USD)` without an explicit conversion basis.
