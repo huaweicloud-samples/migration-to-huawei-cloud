@@ -1,0 +1,52 @@
+{
+    "EG": [
+        "af-south-1",
+        "ap-southeast-3",
+        "cn-east-3",
+        "la-south-2",
+        "sa-brazil-1",
+        "la-north-2",
+        "tr-west-1",
+        "me-east-1",
+        "af-north-1"
+    ],
+    "APM": [
+        "af-north-1",
+        "sa-brazil-1",
+        "tr-west-1",
+        "af-south-1",
+        "me-east-1",
+        "cn-south-1",
+        "ap-southeast-1",
+        "ap-southeast-3",
+        "ap-southeast-5",
+        "cn-north-4"
+    ],
+    "CodeArts": [
+        "af-south-1",
+        "ap-southeast-3",
+        "cn-east-3",
+        "la-south-2",
+        "sa-brazil-1",
+        "la-north-2",
+        "tr-west-1",
+        "me-east-1",
+        "af-north-1"
+    ],
+    "CloudPond": [
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-southeast-3",
+        "ap-southeast-4"
+    ],
+    "DEW": [
+        "all"
+    ],
+    "AAD": [
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-southeast-3",
+        "ap-southeast-4",
+        "ap-southeast-5"
+    ]
+}

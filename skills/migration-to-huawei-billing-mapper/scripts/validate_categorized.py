@@ -54,6 +54,23 @@ TRAFFIC_KEYWORDS = (
     "nat网关已处理流量",
 )
 
+OUTBOUND_KEYWORDS = (
+    "outbound",
+    "egress",
+    "data transfer out",
+    "出站",
+)
+
+CROSS_REGION_KEYWORDS = (
+    "cross-region",
+    "cross region",
+    "inter-region",
+    "inter region",
+    "regional data transfer",
+    "跨区域",
+    "区域间",
+)
+
 SEPARATORS = ("+", ";", "<br>", "\n")
 
 
@@ -136,8 +153,45 @@ def _is_non_hourly(qty: str) -> bool:
 
 
 def _looks_like_traffic(product: str, spec: str) -> bool:
-    haystack = f"{product} {spec}".lower()
-    return any(keyword in haystack for keyword in TRAFFIC_KEYWORDS)
+    product_lower = product.lower()
+    spec_lower = spec.lower()
+
+    # CDN and other network products may use a bare "data transfer" spec label;
+    # that phrase alone should not trigger Data Transfer normalization.
+    product_has_traffic_label = any(
+        keyword in product_lower for keyword in TRAFFIC_KEYWORDS
+    )
+    spec_has_other_traffic_label = any(
+        keyword in spec_lower
+        for keyword in TRAFFIC_KEYWORDS
+        if keyword != "data transfer"
+    )
+    return product_has_traffic_label or spec_has_other_traffic_label
+
+
+def _contains_any(value: str, keywords: tuple[str, ...]) -> bool:
+    value_lower = value.lower()
+    return any(keyword in value_lower for keyword in keywords)
+
+
+def _is_data_transfer(row: TableRow) -> bool:
+    return row.get("Source Product").strip().lower() == "data transfer"
+
+
+def _is_nat_related(row: TableRow) -> bool:
+    haystack = f"{row.get('Source Product')} {row.get('Source Spec')}".lower()
+    return bool(re.search(r"\bnat\b", haystack)) or any(
+        keyword in haystack for keyword in ("nat 网关", "nat网关")
+    )
+
+
+def _is_nat_transfer(row: TableRow) -> bool:
+    if not _is_data_transfer(row):
+        return False
+    haystack = f"{row.get('Source Spec')} {row.get('Notes')}".lower()
+    return bool(re.search(r"\bnat\b", haystack)) or any(
+        keyword in haystack for keyword in ("nat 网关", "nat网关")
+    )
 
 
 def validate_headers(rows: list[TableRow]) -> ValidationResult:
@@ -254,6 +308,97 @@ def validate_traffic_normalization(rows: list[TableRow]) -> ValidationResult:
     return ValidationResult("Traffic Normalization", not failures, failures)
 
 
+def validate_data_transfer_consolidation(rows: list[TableRow]) -> ValidationResult:
+    failures = []
+    transfer_scope_rows = []
+    for row in rows:
+        product_and_spec = f"{row.get('Source Product')} {row.get('Source Spec')}"
+        is_network_transfer_detail = (
+            row.get("Category").strip().lower() == "network"
+            and (
+                _contains_any(product_and_spec, OUTBOUND_KEYWORDS)
+                or _contains_any(product_and_spec, CROSS_REGION_KEYWORDS)
+            )
+        )
+        if _is_data_transfer(row) or _is_nat_related(row) or is_network_transfer_detail:
+            transfer_scope_rows.append(row)
+
+    if not transfer_scope_rows:
+        return ValidationResult("Data Transfer Consolidation", True, [])
+
+    regions = sorted({row.get("Region") for row in transfer_scope_rows})
+    for region in regions:
+        region_rows = [row for row in rows if row.get("Region") == region]
+        data_transfer_rows = [row for row in region_rows if _is_data_transfer(row)]
+        nat_present = any(_is_nat_related(row) for row in region_rows)
+        nat_transfer_rows = [
+            row for row in data_transfer_rows if _is_nat_transfer(row)
+        ]
+        ordinary_transfer_rows = [
+            row for row in data_transfer_rows if not _is_nat_transfer(row)
+        ]
+
+        separate_detail_rows = []
+        for row in region_rows:
+            if row.get("Category").strip().lower() != "network":
+                continue
+            product_and_spec = f"{row.get('Source Product')} {row.get('Source Spec')}"
+            has_transfer_detail = _contains_any(
+                product_and_spec, OUTBOUND_KEYWORDS
+            ) or _contains_any(product_and_spec, CROSS_REGION_KEYWORDS)
+            if has_transfer_detail and not _is_data_transfer(row):
+                separate_detail_rows.append(row)
+
+        if len(ordinary_transfer_rows) != 1:
+            lines = (
+                ", ".join(str(row.line_no) for row in ordinary_transfer_rows)
+                or "none"
+            )
+            failures.append(
+                f"region `{region}`: non-NAT transfer charges must be consolidated "
+                "into exactly one `Data Transfer` row; "
+                f"found {len(ordinary_transfer_rows)} at lines {lines}"
+            )
+
+        expected_nat_rows = 1 if nat_present else 0
+        if len(nat_transfer_rows) != expected_nat_rows:
+            lines = (
+                ", ".join(str(row.line_no) for row in nat_transfer_rows) or "none"
+            )
+            failures.append(
+                f"region `{region}`: expected {expected_nat_rows} NAT processed "
+                "`Data Transfer` row(s) based on NAT presence; "
+                f"found {len(nat_transfer_rows)} at lines {lines}"
+            )
+
+        expected_total = 2 if nat_present else 1
+        if len(data_transfer_rows) != expected_total:
+            expected_shape = "ordinary + NAT processed" if nat_present else "ordinary only"
+            failures.append(
+                f"region `{region}`: expected {expected_total} total `Data Transfer` "
+                f"row(s) ({expected_shape}); "
+                f"found {len(data_transfer_rows)}"
+            )
+
+        for ordinary_row in ordinary_transfer_rows:
+            spec = ordinary_row.get("Source Spec")
+            if _contains_any(spec, OUTBOUND_KEYWORDS) or _contains_any(
+                spec, CROSS_REGION_KEYWORDS
+            ):
+                failures.append(
+                    f"line {ordinary_row.line_no} (region `{region}`): outbound and "
+                    "cross-region details belong in `Notes`, not `Source Spec`"
+                )
+
+        for row in separate_detail_rows:
+            failures.append(
+                f"line {row.line_no} (region `{region}`): outbound or cross-region "
+                "transfer must be folded into the ordinary `Data Transfer` row"
+            )
+
+    return ValidationResult("Data Transfer Consolidation", not failures, failures)
+
+
 def validate_price_format(rows: list[TableRow]) -> ValidationResult:
     failures = []
     for row in rows:
@@ -284,6 +429,7 @@ def run_validation(md_path: Path) -> list[ValidationResult]:
         validate_resource_count(rows),
         validate_category_vs_section(rows),
         validate_traffic_normalization(rows),
+        validate_data_transfer_consolidation(rows),
         validate_price_format(rows),
     ]
 

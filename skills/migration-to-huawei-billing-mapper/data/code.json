@@ -1,0 +1,536 @@
+[
+    {
+        "name": "事件网格",
+        "code": "EG"
+    },
+    {
+        "name": "分布式缓存服务",
+        "code": "DCS"
+    },
+    {
+        "name": "应用管理与运维平台",
+        "code": "ServiceStage"
+    },
+    {
+        "name": "分布式消息服务",
+        "code": "Kafka"
+    },
+    {
+        "name": "微服务引擎",
+        "code": "CSE"
+    },
+    {
+        "name": "API网关",
+        "code": "APIG"
+    },
+    {
+        "name": "应用性能管理",
+        "code": "APM"
+    },
+    {
+        "name": "性能测试",
+        "code": "CPTS"
+    },
+    {
+        "name": "代码检查",
+        "code": "CodeCheck"
+    },
+    {
+        "name": "需求管理",
+        "code": "ProjectMan"
+    },
+    {
+        "name": "编译构建",
+        "code": "CloudBuild"
+    },
+    {
+        "name": "软件开发生产线",
+        "code": "CodeArts"
+    },
+    {
+        "name": "测试计划",
+        "code": "cloudtest"
+    },
+    {
+        "name": "部署",
+        "code": "CodeArtsDeploy"
+    },
+    {
+        "name": "代码检查",
+        "code": "CodeArtsCheck"
+    },
+    {
+        "name": "流水线",
+        "code": "CodeArtsPipeline"
+    },
+    {
+        "name": "编译构建",
+        "code": "CodeArtsBuild"
+    },
+    {
+        "name": "制品仓库",
+        "code": "CodeArtsArtifact"
+    },
+    {
+        "name": "云应用引擎",
+        "code": "CAE"
+    },
+    {
+        "name": "代码托管",
+        "code": "CodeArtsRepo"
+    },
+    {
+        "name": "弹性负载均衡",
+        "code": "ELB"
+    },
+    {
+        "name": "云解析服务",
+        "code": "DNS"
+    },
+    {
+        "name": "虚拟私有云",
+        "code": "VPC"
+    },
+    {
+        "name": "弹性公网IP",
+        "code": "EIP"
+    },
+    {
+        "name": "NAT网关",
+        "code": "NAT"
+    },
+    {
+        "name": "VPCEP 终端节点",
+        "code": "VPCEP"
+    },
+    {
+        "name": "云连接",
+        "code": "CC",
+        "global": true
+    },
+    {
+        "name": "企业路由器",
+        "code": "ER"
+    },
+    {
+        "name": "全球加速",
+        "code": "GA",
+        "global": true
+    },
+    {
+        "name": "云专线",
+        "code": "DC"
+    },
+    {
+        "name": "虚拟专用网络",
+        "code": "VPN"
+    },
+    {
+        "name": "企业交换机",
+        "code": "ESW"
+    },
+    {
+        "name": "内容分发网络",
+        "code": "CDN",
+        "global": true
+    },
+    {
+        "name": "CloudPond",
+        "code": "CloudPond"
+    },
+    {
+        "name": "弹性云服务器",
+        "code": "ECS"
+    },
+    {
+        "name": "弹性伸缩",
+        "code": "AS"
+    },
+    {
+        "name": "函数工作流",
+        "code": "FunctionGraph"
+    },
+    {
+        "name": "镜像服务",
+        "code": "IMS"
+    },
+    {
+        "name": "裸金属服务器",
+        "code": "BMS"
+    },
+    {
+        "name": "专属主机",
+        "code": "DeH"
+    },
+    {
+        "name": "云化数据中心",
+        "code": "CloudDC"
+    },
+    {
+        "name": "专属计算集群",
+        "code": "DCC"
+    },
+    {
+        "name": "云手机服务器",
+        "code": "CPH"
+    },
+    {
+        "name": "企业主机安全",
+        "code": "HSS"
+    },
+    {
+        "name": "数据加密服务",
+        "code": "DEW"
+    },
+    {
+        "name": "密码安全中心-密钥对管理",
+        "code": "KPS"
+    },
+    {
+        "name": "密码安全中心-凭据管理",
+        "code": "CSMS"
+    },
+    {
+        "name": "密码安全中心-密钥管理",
+        "code": "KMS"
+    },
+    {
+        "name": "云证书管理服务",
+        "code": "CCM",
+        "global": true
+    },
+    {
+        "name": "SSL证书管理",
+        "code": "SCM",
+        "global": true
+    },
+    {
+        "name": "Anti-DDoS流量清洗",
+        "code": "Anti-DDoS"
+    },
+    {
+        "name": "数据库安全服务",
+        "code": "DBSS"
+    },
+    {
+        "name": "Web应用防火墙",
+        "code": "WAF"
+    },
+    {
+        "name": "数据安全中心",
+        "code": "DSC"
+    },
+    {
+        "name": "云防火墙",
+        "code": "CFW"
+    },
+    {
+        "name": "云堡垒机",
+        "code": "CBH"
+    },
+    {
+        "name": "边缘安全",
+        "code": "EdgeSec"
+    },
+    {
+        "name": "安全云脑",
+        "code": "SecMaster"
+    },
+    {
+        "name": "DDoS防护",
+        "code": "AAD"
+    },
+    {
+        "name": "文档数据库服务",
+        "code": "DDS"
+    },
+    {
+        "name": "云数据库 RDS",
+        "code": "RDS"
+    },
+    {
+        "name": "云数据库 TaurusDB",
+        "code": "GaussDB"
+    },
+    {
+        "name": "云数据库 GaussDB",
+        "code": "GaussDBforopenGauss"
+    },
+    {
+        "name": "云数据库 GeminiDB",
+        "code": "GaussDBforNoSQL"
+    },
+    {
+        "name": "数据复制服务",
+        "code": "DRS"
+    },
+    {
+        "name": "数据库和应用迁移 UGO",
+        "code": "UGO"
+    },
+    {
+        "name": "分布式数据库中间件",
+        "code": "DDM"
+    },
+    {
+        "name": "数据库管理服务 DAS",
+        "code": "DAS"
+    },
+    {
+        "name": "文字识别",
+        "code": "OCR"
+    },
+    {
+        "name": "人脸识别服务",
+        "code": "FRS"
+    },
+    {
+        "name": "AI开发平台",
+        "code": "ModelArts"
+    },
+    {
+        "name": "图像识别",
+        "code": "Image"
+    },
+    {
+        "name": "图像搜索",
+        "code": "ImageSearch"
+    },
+    {
+        "name": "内容审核",
+        "code": "Moderation"
+    },
+    {
+        "name": "语音交互服务",
+        "code": "SIS"
+    },
+    {
+        "name": "图引擎服务",
+        "code": "GES"
+    },
+    {
+        "name": "智能问答机器人",
+        "code": "CBS"
+    },
+    {
+        "name": "华为云Astro轻应用",
+        "code": "AstroZero"
+    },
+    {
+        "name": "MapReduce服务",
+        "code": "MRS"
+    },
+    {
+        "name": "数据仓库服务",
+        "code": "DWS"
+    },
+    {
+        "name": "数据湖探索",
+        "code": "DLI"
+    },
+    {
+        "name": "数据湖治理中心",
+        "code": "DataArtsStudio"
+    },
+    {
+        "name": "云搜索服务",
+        "code": "CSS"
+    },
+    {
+        "name": "数据接入服务",
+        "code": "DIS"
+    },
+    {
+        "name": "云容器引擎",
+        "code": "CCE"
+    },
+    {
+        "name": "容器镜像服务",
+        "code": "SWR"
+    },
+    {
+        "name": "应用编排服务",
+        "code": "AOS"
+    },
+    {
+        "name": "云容器实例",
+        "code": "CCI"
+    },
+    {
+        "name": "华为云UCS",
+        "code": "UCS"
+    },
+    {
+        "name": "主机迁移服务",
+        "code": "SMS"
+    },
+    {
+        "name": "对象存储迁移服务",
+        "code": "OMS"
+    },
+    {
+        "name": "云数据迁移",
+        "code": "CDM"
+    },
+    {
+        "name": "统一身份认证服务",
+        "code": "IAM"
+    },
+    {
+        "name": "云监控服务",
+        "code": "CES"
+    },
+    {
+        "name": "云日志服务",
+        "code": "LTS"
+    },
+    {
+        "name": "资源管理服务",
+        "code": "RMS"
+    },
+    {
+        "name": "云审计服务",
+        "code": "CTS"
+    },
+    {
+        "name": "标签管理服务",
+        "code": "TMS"
+    },
+    {
+        "name": "企业项目管理服务",
+        "code": "EPS"
+    },
+    {
+        "name": "消息通知服务",
+        "code": "SMN"
+    },
+    {
+        "name": "应用运维管理",
+        "code": "AOM"
+    },
+    {
+        "name": "组织",
+        "code": "Organizations"
+    },
+    {
+        "name": "资源访问管理",
+        "code": "RAM"
+    },
+    {
+        "name": "配置审计",
+        "code": "Config"
+    },
+    {
+        "name": "资源编排服务",
+        "code": "RFS"
+    },
+    {
+        "name": "访问分析",
+        "code": "IAMAccessAnalyzer"
+    },
+    {
+        "name": "IAM 身份中心",
+        "code": "IdentityCenter"
+    },
+    {
+        "name": "IAM 身份中心身份源",
+        "code": "IdentityCenterStore"
+    },
+    {
+        "name": "IAM 身份中心 SCIM",
+        "code": "IdentityCenterSCIM"
+    },
+    {
+        "name": "IAM 身份中心 OIDC",
+        "code": "IdentityCenterOIDC"
+    },
+    {
+        "name": "IAM 身份中心 PortalAPI",
+        "code": "IdentityCenterPortalAPI"
+    },
+    {
+        "name": "安全令牌服务",
+        "code": "STS"
+    },
+    {
+        "name": "云运维中心",
+        "code": "COC",
+        "global": true
+    },
+    {
+        "name": "资源治理中心",
+        "code": "RGC"
+    },
+    {
+        "name": "应用与数据集成平台",
+        "code": "ROMA"
+    },
+    {
+        "name": "华为云会议",
+        "code": "Meeting"
+    },
+    {
+        "name": "云桌面",
+        "code": "Workspace"
+    },
+    {
+        "name": "云应用",
+        "code": "WorkspaceApp"
+    },
+    {
+        "name": "云硬盘",
+        "code": "EVS"
+    },
+    {
+        "name": "云备份",
+        "code": "CBR"
+    },
+    {
+        "name": "高性能弹性文件服务",
+        "code": "SFSTurbo"
+    },
+    {
+        "name": "对象存储服务",
+        "code": "OBS"
+    },
+    {
+        "name": "API Explorer",
+        "code": "APIExplorer"
+    },
+    {
+        "name": "媒体处理",
+        "code": "MPC"
+    },
+    {
+        "name": "视频直播",
+        "code": "Live"
+    },
+    {
+        "name": "视频点播",
+        "code": "VOD"
+    },
+    {
+        "name": "华为云实时音视频",
+        "code": "CloudRTC"
+    },
+    {
+        "name": "设备接入",
+        "code": "IoTDA"
+    },
+    {
+        "name": "设备接入管理",
+        "code": "IoTDM"
+    },
+    {
+        "name": "云商店",
+        "code": "Marketplace"
+    },
+    {
+        "name": "ManageOne运维中心",
+        "code": "ManageOneOCHCS"
+    },
+    {
+        "name": "ManageOne服务中心",
+        "code": "ManageOneSCHCS"
+    }
+]
