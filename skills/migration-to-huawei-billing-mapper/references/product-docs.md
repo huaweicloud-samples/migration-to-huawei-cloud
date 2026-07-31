@@ -30,7 +30,7 @@
 | WAF | https://support.huaweicloud.com/intl/en-us/productdesc-waf/waf_01_0106.html | - |
 | CFW | https://support.huaweicloud.com/intl/en-us/productdesc-cfw/cfw_01_0034.html | - |
 | HSS | https://support.huaweicloud.com/intl/en-us/productdesc-hss2.0/hss_01_0136.html | - |
-| DEW | https://support.huaweicloud.com/intl/en-us/price-dew/dew_03_0006.html | Includes KMS, CSMS sub products |
+| DEW | https://support.huaweicloud.com/intl/en-us/price-dew/dew_03_0006.html | Includes KMS, CSMS sub-products |
 | CBH | https://support.huaweicloud.com/intl/en-us/productdesc-cbh/cbh_01_0010.html | - |
 | DBSS | https://support.huaweicloud.com/intl/en-us/productdesc-dbss/dbss_01_0268.html | - |
 | SecMaster | https://support.huaweicloud.com/intl/en-us/productdesc-secmaster/secmaster_01_0111.html | - |
@@ -42,7 +42,7 @@
 
 ## Usually Non-Billable Huawei Cloud Services
 
-These services are often mapped during migration but typically do not need a flavor-style spec recommendation. 
+These services are often mapped during migration but typically do not need a flavor-style spec recommendation.
 
 - DNS
 - SWR
