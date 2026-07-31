@@ -359,7 +359,7 @@ For AWS, pass `data/source-clouds/aws-hwc-product.csv`. For Microsoft Azure, pas
 
 **Agent-driven step.** Read `output/billing_matched.md`, first find the appropriate tool for creating child sessions, then split the work by category table (`Compute`, `Storage`, `Network`, `Database`, `Other`), and spawn one child session per non-empty category.
 
-> **Non-negotiable sub-agent rule:** Step 5 must use sub-agents whenever at least one non-empty category exists. This requirement does not depend on perceived complexity: it still applies when the inventory has only one category or one row, the recommendation looks obvious, the expected product or spec is already familiar, or the required documentation is already cached. A task looking simple is never a reason for the parent session to perform specification recommendation itself or skip spawning the required category sub-agent.
+> **Non-negotiable sub-agent rule:** Step 5 must use sub-agents whenever at least one non-empty category exists. This requirement does not depend on perceived complexity: it still applies when the inventory has only one category or one row, the recommendation looks obvious, the expected product or spec is already familiar, or the required documentation is readily available. A task looking simple is never a reason for the parent session to perform specification recommendation itself or skip spawning the required category sub-agent.
 
 #### 5.0 Find the Sub-Agent Tool First
 
@@ -373,14 +373,14 @@ Document the decision briefly in the working notes so it is clear which tool was
 
 #### 5.0.1 Enforce the Parent-Session Boundary
 
-When a child-agent tool is available, the parent session must not query Huawei Cloud specifications, write category recommendations, or complete any category result on a child's behalf. This separation keeps every recommendation attributable to the child session that collected and saved its supporting documentation.
+When a child-agent tool is available, the parent session must not query Huawei Cloud specifications, write category recommendations, or complete any category result on a child's behalf. This separation keeps every recommendation attributable to the child session that collected and reviewed its supporting documentation.
 
 The parent session may only:
 
 - Read `output/billing_matched.md` to identify which top-level categories are non-empty and extract their exact tables
 - Instantiate the required child-agent prompt for each non-empty category
 - Spawn and coordinate the child sessions
-- Check that each expected category output and local documentation cache exists and follows the required structure
+- Check that each expected category output exists and follows the required structure
 - Merge the completed child outputs into `output/billing_with_specs.md` without adding, rewriting, or resolving recommendations
 
 Every non-empty top-level category must have its own child session. Do not combine multiple categories in one child session, omit a non-empty category, or let the parent session act as the child for a category. If no child-agent tool is available or a required category child cannot be created, stop Step 5 and report the blocker; the parent must not perform that category's recommendation work as a fallback.
@@ -398,14 +398,13 @@ Before spawning a child session, the parent must replace every placeholder in th
 - `{{INPUT_FILE}}`: usually `output/billing_matched.md`
 - `{{CATEGORY_TABLE_MARKDOWN}}`: the exact category section or table assigned to that child
 - `{{DOC_REFERENCE_FILE}}`: `skills/migration-to-huawei-billing-mapper/references/product-docs.md`
-- `{{DOC_CACHE_DIR}}`: category-specific local doc cache such as `output/spec-docs/compute/`
 - `{{CATEGORY_OUTPUT_FILE}}`: recommended category result path such as `output/spec-results/compute.md`
 
 Parent-session rules for template usage:
 
 - Pass only one top-level category per instantiated prompt
 - Inline the exact category table content in `{{CATEGORY_TABLE_MARKDOWN}}` so the child scope is explicit
-- Require the child to save fetched official docs locally before making recommendations
+- Require the child to fetch and review official docs before making recommendations
 - Require the child to write only its category result file, not the final merged document
 - Keep a predictable per-category result layout such as:
 
@@ -424,21 +423,9 @@ Child-session workflow requirements:
 - Each non-empty top-level category gets exactly one child session
 - Each child session must first collect the required official Huawei Cloud documentation pages for the products in its category
 - Use `WebFetch` or an equivalent page-fetching tool to retrieve the documentation content
-- Save the fetched source pages locally before doing any recommendation work
-- Recommended local cache layout:
-
-```text
-output/spec-docs/
-  compute/
-  storage/
-  network/
-  database/
-  other/
-```
-
-- Save each fetched page as a readable local artifact such as `.md`, `.html`, or `.txt`
-- File names should be stable and product-oriented, for example `ecs.md`, `rds-mysql.md`, `evs.md`
-- After documentation is fetched and saved locally, the child session continues with Step 5.2 for only that category
+- Do not save fetched product documentation to local files during this step
+- Record the official documentation URLs and summarize the relevant evidence in the category result
+- After documentation is fetched and reviewed, the child session continues with Step 5.2 for only that category
 - The parent session remains responsible for combining all category outputs back into one final `output/billing_with_specs.md`, but must preserve the child-authored recommendation content unchanged
 
 #### 5.1 Look Up Documentation
@@ -471,9 +458,8 @@ If the service-region result is `Unavailable`, do not recommend a spec for that 
 After this precheck, read `references/product-docs.md` for official Huawei Cloud documentation URLs. For each category child session:
 
 - Identify all distinct Huawei Cloud products that appear in that category table
-- Fetch the official documentation pages needed for those products
-- Save the fetched pages to the local `output/spec-docs/<category>/` directory
-- Use the saved local copies as the working reference set for the rest of Step 5
+- Fetch and review the official documentation pages needed for those products
+- Use the fetched documentation as the working reference set for the rest of Step 5; do not save product documentation locally
 
 Use the official docs to verify:
 
@@ -483,13 +469,13 @@ Use the official docs to verify:
 - Database engine versions and classes
 - Region support and regional limitations
 
-If the product is not listed in `product-docs.md`, search Huawei Cloud official documentation, fetch the relevant page, save it locally, and cite the limitation in the notes.
+If the product is not listed in `product-docs.md`, search Huawei Cloud official documentation, fetch the relevant page, and cite the URL and limitation in the notes.
 
 **Mandatory region support check:** the service-region precheck above is required before recommending any Huawei Cloud product or spec. Use official product documentation as the second source of evidence for product-specific regional limitations.
 
 #### 5.2 Recommend Spec
 
-Only start this step after the category child session has finished fetching and saving the required documentation pages locally.
+Only start this step after the category child session has finished fetching and reviewing the required documentation pages.
 
 Match `Source Spec` to the closest Huawei Cloud spec by comparing:
 
@@ -605,7 +591,7 @@ For any row that truly needs a substitute, do not jump directly to a guessed rep
 
 Candidate-pool rules:
 
-- Reuse the Step 5 local doc cache under `output/spec-docs/` before searching again
+- Reuse the official documentation URLs and evidence recorded in the Step 5 category result before searching again
 - Extract the row's baseline attributes from `Source Spec`, `Recommended Spec`, and `Recommendation Notes`: topology, vCPU, RAM, capacity, storage class, engine, edition, bandwidth class, cache mode, and whether the service is serverless or provisioned
 - Query the same Huawei Cloud product family for sellable candidates in the exact `HWC Target Region`
 - Prefer machine-queryable product-family APIs when available, then use official documentation to confirm semantics
@@ -701,7 +687,7 @@ For each candidate:
 
 1. Extract the required business capability from the source row: throughput, latency, persistence, ordering, retry/dead-letter behavior, HA, elasticity, data volume, connections, compliance, and operations ownership.
 2. Compare the direct recommendation with the source service model and actual scale. Include “keep the direct recommendation” as one candidate path.
-3. Use only patterns supported by `references/alternative-solutions.md`, the local `output/spec-docs/` cache, and official Huawei Cloud documentation. Fetch and save any missing official pages before writing the recommendation.
+3. Use only patterns supported by `references/alternative-solutions.md` and official Huawei Cloud documentation. Fetch any missing official pages before writing the recommendation, but do not save product documentation locally.
 4. Prefer the smallest architecture that preserves the required capability. Record at least the key migration impact, function gap, application changes, operations changes, cost dimensions to recalculate, and validation work.
 5. Mark the alternative `🟡` when it is workable but needs application or operations adaptation; mark it `🔴` when no defensible managed equivalent exists or redesign/self-management is required.
 
@@ -724,7 +710,7 @@ Append the alternatives after all category tables and their recommendation ratio
 - **主要差异与改造**：<服务模型、功能缺口、应用改造、运维责任>
 - **成本判断**：<成本方向和需重新测算的计费项，不虚构价格>
 - **风险与验证**：<PoC、压测、故障演练、数据校验或业务确认项>
-- **证据**：<本地缓存文件和/或官方文档 URL>
+- **证据**：<官方文档 URL>
 - **迁移信号**：🟡 / 🔴
 ```
 
