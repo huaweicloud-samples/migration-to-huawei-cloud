@@ -9,6 +9,7 @@ A collection of reusable agent skills for Huawei Cloud migration planning, asses
 | Skill | Function | Best for |
 | --- | --- | --- |
 | [`migration-to-huawei-billing-mapper`](skills/migration-to-huawei-billing-mapper/SKILL.md) | Converts AWS or Microsoft Azure billing exports and resource inventories into a reviewed Huawei Cloud migration inventory. It categorizes resources, maps products and regions, recommends target specifications, checks availability when the Huawei Cloud CLI is configured, records alternative solutions, and exports the final inventory to Excel. | Cloud migration assessment, bill analysis, product mapping, region mapping, and migration sizing |
+| [`query-huawei-cloud-prices`](skills/query-huawei-cloud-prices/SKILL.md) | Queries live Huawei Cloud product prices by product, region, and resource specification. Supports international and China calculator sites, on-demand, monthly, yearly, and tiered prices, mapped billing units. | Price lookup, regional cost comparison, ECS/EVS/EIP/NAT/APIG pricing, and specification verification |
 
 Each skill has its own `SKILL.md` and may include dedicated scripts, data, references, and tests. Use the linked skill documentation for its exact inputs, outputs, prerequisites, and workflow.
 
@@ -53,12 +54,24 @@ Choose a skill from the table above and mention its exact name in the prompt. Th
 
 The current repository includes the following skill-specific usage details.
 
+### `query-huawei-cloud-prices`
+
+#### Prompt example
+
+```text
+Check the ECS x1.2u.4g price in Huawei Cloud Singapore.
+```
+
+The skill queries the international Huawei Cloud calculator by default and returns compact JSON with the product, region, currency, specifications, and mapped price units.
+
+Use `--site china` for China site pricing. The China site uses `portal.huaweicloud.com`, defaults to `zh-cn`, and returns `CNY`.
+
 ### `migration-to-huawei-billing-mapper`
 
 #### Prompt example
 
 ```text
-Use skills to generate a Huawei Cloud migration inventory from the PDF or Excel billing file in this directory.
+Use skills to generate a Huawei Cloud migration inventory from the PDF/Excel billing file in this directory.
 ```
 
 Provide a billing report, Cost Management export, or resource inventory. The workflow writes intermediate and final files to `output/`:

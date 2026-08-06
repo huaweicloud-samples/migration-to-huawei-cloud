@@ -9,6 +9,7 @@
 | Skill | 功能 | 适用场景 |
 | --- | --- | --- |
 | [`migration-to-huawei-billing-mapper`](skills/migration-to-huawei-billing-mapper/SKILL.md) | 将 AWS 或 Microsoft Azure 的账单导出文件、Cost Management 导出文件和资源清单转换为经过审核的华为云迁移清单。支持资源分类、产品匹配、地域映射、目标规格推荐、华为云 CLI 可用性检查、替代方案记录，以及最终 Excel 导出。 | 云迁移评估、账单分析、产品映射、地域映射和迁移规格评估 |
+| [`query-huawei-cloud-prices`](skills/query-huawei-cloud-prices/SKILL.md) | 按产品、地域和规格实时查询华为云价格。支持国际站和中国站、按需/包月/包年/阶梯价格、计费单位映射。 | 价格查询、地域价格对比、ECS/EVS/EIP/NAT/APIG 价格和规格确认 |
 
 每个 skill 都有自己的 `SKILL.md`，并可以包含专用脚本、数据、references 和测试。具体的输入、输出、前置依赖和工作流请以对应 skill 的文档为准。
 
@@ -52,6 +53,19 @@ skills/<skill-name>/SKILL.md
 从上方清单中选择一个 skill，并在 prompt 中使用它的准确名称。然后按照对应 `SKILL.md` 中的说明提供输入文件和目标输出位置。
 
 当前仓库包含以下 skill 的专用使用说明。
+
+### `query-huawei-cloud-prices`
+
+#### Prompt 示例
+
+```text
+查询华为云北京四区域 ECS x1.2u.4g 的价格。
+```
+
+该 skill 默认查询华为云国际站价格，返回包含产品、地域、货币、规格和映射后计费单位的精简 JSON
+
+查询中国站价格时使用 `--site china`。中国站使用 `portal.huaweicloud.com`，默认语言为 `zh-cn`，返回货币 `CNY`
+
 
 ### `migration-to-huawei-billing-mapper`
 
