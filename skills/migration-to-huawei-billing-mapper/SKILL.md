@@ -441,17 +441,17 @@ uv run skills/migration-to-huawei-billing-mapper/scripts/check_service_region.py
   --json
 ```
 
-The script reads `data/code.json`, resolves the Huawei Cloud product name to its service code, and applies these checks in order:
+The script reads `data/code.json`, resolves the Huawei Cloud product name to its service code, and applies these checks in order. It uses the Huawei Cloud price calculator on both the international and China sites by default:
 
-1. If the code entry has `"global": true`, treat the service as available in every region without making an API request.
-2. If the code exists as a key in `data/product-regions.json`, use that list as the authoritative supported-region list without making an API request. The special region value `all` matches every target region.
-3. Otherwise, call:
+1. Load `menuInfo` and resolve the product's calculator entry. For ordinary products, the target region must occur in `regionOnline.regionList`.
+2. For configured special products, such as CCE Autopilot, load the parent calculator product and query `productInfo` with the target region. The configured child product group must contain a valid resource specification and price plan; a parent product being available is not sufficient.
+3. If the product is absent from the calculator menu, retain the legacy local/API Explorer check as a compatibility fallback:
 
 ```text
 https://console-intl.huaweicloud.com/apiexplorer/new/v1/endpoints/{code}/search?offset=0&limit=50
 ```
 
-For API-backed services, it considers the service available only when a successful response contains the target region in `endpoints[].region`. If the API request fails, times out, returns invalid JSON, or otherwise cannot be parsed, treat the service as available and record that the API check failed. This fallback is required because the service may not yet be registered in API Explorer. If the product name cannot be resolved from `data/code.json`, skip this API check for that row and record that it was skipped; do not invent a service code.
+For API-backed fallback checks, it considers the service available only when a successful response contains the target region in `endpoints[].region`. Calculator failures (network errors, timeouts, invalid JSON, or unexpected response shape) are recorded as `Pending Confirmation (calculator check failed)` and must not be treated as available. If the product name cannot be resolved from `data/code.json`, skip this API check for that row and record that it was skipped; do not invent a service code. Special-product mappings are maintained in `data/calculator-special-products.json`.
 
 If the service-region result is `Unavailable`, do not recommend a spec for that row unless official documentation identifies a supported alternative in the same target region. Include the service code and region-check result in `Recommendation Notes`. `Skipped` and API-failure fallback results must also be recorded in the notes so later review can distinguish them from a confirmed regional match.
 

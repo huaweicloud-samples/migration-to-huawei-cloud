@@ -1,0 +1,16 @@
+{
+  "intl": {
+    "cce_autopilot": {
+      "aliases": ["cce autopilot", "云容器引擎 cce autopilot"],
+      "parent_url_path": "cce",
+      "product_groups": ["cce_cce.autopilot"]
+    }
+  },
+  "china": {
+    "cce_autopilot": {
+      "aliases": ["cce autopilot", "云容器引擎 cce autopilot"],
+      "parent_url_path": "cce",
+      "product_groups": ["cce_cce.autopilot"]
+    }
+  }
+}

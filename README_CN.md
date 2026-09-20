@@ -8,8 +8,8 @@
 
 | Skill | 功能 | 适用场景 |
 | --- | --- | --- |
-| [`migration-to-huawei-billing-mapper`](skills/migration-to-huawei-billing-mapper/SKILL.md) | 将 AWS 或 Microsoft Azure 的账单导出文件、Cost Management 导出文件和资源清单转换为经过审核的华为云迁移清单。支持资源分类、产品匹配、地域映射、目标规格推荐、华为云 CLI 可用性检查、替代方案记录，以及最终 Excel 导出。 | 云迁移评估、账单分析、产品映射、地域映射和迁移规格评估 |
-| [`query-huawei-cloud-prices`](skills/query-huawei-cloud-prices/SKILL.md) | 按产品、地域和规格实时查询华为云价格。支持国际站和中国站、按需/包月/包年/阶梯价格、计费单位映射。 | 价格查询、地域价格对比、ECS/EVS/EIP/NAT/APIG 价格和规格确认 |
+| [migration-to-huawei-billing-mapper](skills/migration-to-huawei-billing-mapper/SKILL.md) | 将 AWS 或 Microsoft Azure 的账单导出文件、Cost Management 导出文件和资源清单转换为经过审核的华为云迁移清单。支持资源分类、产品匹配、地域映射、目标规格推荐、华为云 CLI 可用性检查、替代方案记录，以及最终 Excel 导出。 | 云迁移评估、账单分析、产品映射、地域映射和迁移规格评估 |
+| [query-huawei-cloud-prices](skills/query-huawei-cloud-prices/SKILL.md) | 按产品、地域和规格实时查询华为云价格。支持国际站和中国站、按需/包月/包年/阶梯价格、计费单位映射。 | 价格查询、地域价格对比、ECS/EVS/EIP/NAT/APIG 价格和规格确认 |
 
 每个 skill 都有自己的 `SKILL.md`，并可以包含专用脚本、数据、references 和测试。具体的输入、输出、前置依赖和工作流请以对应 skill 的文档为准。
 
