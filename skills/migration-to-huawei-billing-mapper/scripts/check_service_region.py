@@ -2,13 +2,7 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Check whether a Huawei Cloud service is offered in a target region.
-
-The API Explorer endpoint catalog is used because a service can be registered
-in the control plane without being offered in every region. A request failure
-is deliberately treated as service availability: an unregistered service or
-an unavailable API Explorer endpoint must not create a false negative.
-"""
+"""Check whether a Huawei Cloud service is offered in a target region."""
 
 from __future__ import annotations
 
@@ -19,12 +13,21 @@ import sys
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 
 DEFAULT_CODE_FILE = Path(__file__).resolve().parents[1] / "data" / "code.json"
 DEFAULT_PRODUCT_REGIONS_FILE = Path(__file__).resolve().parents[1] / "data" / "product-regions.json"
+DEFAULT_SPECIAL_PRODUCTS_FILE = Path(__file__).resolve().parents[1] / "data" / "calculator-special-products.json"
+CALCULATOR_MENU_ENDPOINTS = {
+    "intl": "https://portal-intl.huaweicloud.com/api/calculator/rest/cbc/portalcalculatornodeservice/v4/api/menuInfo",
+    "china": "https://portal.huaweicloud.com/api/calculator/rest/cbc/portalcalculatornodeservice/v4/api/menuInfo",
+}
+CALCULATOR_PRODUCT_ENDPOINTS = {
+    "intl": "https://portal-intl.huaweicloud.com/api/calculator/rest/cbc/portalcalculatornodeservice/v4/api/productInfo",
+    "china": "https://portal.huaweicloud.com/api/calculator/rest/cbc/portalcalculatornodeservice/v4/api/productInfo",
+}
 DEFAULT_ENDPOINT_URL = (
     "https://console-intl.huaweicloud.com/apiexplorer/new/v1/endpoints/"
     "{code}/search?offset=0&limit=50"
@@ -34,6 +37,7 @@ AVAILABLE = "Available"
 UNAVAILABLE = "Unavailable"
 SKIPPED = "Skipped"
 API_FAILURE = "Available (API check failed)"
+CALCULATOR_FAILURE = "Pending Confirmation (calculator check failed)"
 
 
 def _normalize_name(value: str) -> str:
@@ -81,6 +85,14 @@ def load_product_regions(
             raise ValueError(f"Region list for {code} must contain strings")
         regions[code] = [region.strip() for region in values if region.strip()]
     return regions
+
+
+def load_special_products(path: Path = DEFAULT_SPECIAL_PRODUCTS_FILE) -> dict[str, Any]:
+    with path.open(encoding="utf-8") as source:
+        data = json.load(source)
+    if not isinstance(data, dict):
+        raise ValueError("calculator-special-products.json must contain an object")
+    return data
 
 
 def _product_parts(product: str) -> list[str]:
@@ -134,6 +146,64 @@ def _fetch_endpoint_payload(url: str, timeout: int) -> Any:
         return json.loads(response.read().decode("utf-8"))
 
 
+def _fetch_calculator(endpoint: str, params: dict[str, str], timeout: int, opener) -> Any:
+    url = f"{endpoint}?{urlencode(params)}"
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "migration-to-huawei-billing-mapper"})
+    with opener(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _calculator_products(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict) or not isinstance(payload.get("menuInfos"), list):
+        raise ValueError("Calculator menu response does not contain menuInfos")
+
+    products: list[dict[str, Any]] = []
+
+    def visit(nodes: list[Any], parent: str | None = None) -> None:
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            current_parent = node.get("parentCategoryName", parent)
+            if node.get("urlPath") and node.get("categoryName"):
+                item = dict(node)
+                item.setdefault("parentCategoryName", current_parent)
+                products.append(item)
+            children = node.get("subCategoryLists")
+            if isinstance(children, list):
+                visit(children, current_parent)
+
+    visit(payload["menuInfos"])
+    return products
+
+
+def _calculator_product_match(products: list[dict[str, Any]], queries: list[str]) -> dict[str, Any] | None:
+    normalized = {_normalize_name(query) for query in queries if query}
+    for product in products:
+        values = {product.get("urlPath"), product.get("categoryName"), *(product.get("associateList") or [])}
+        if any(_normalize_name(value) in normalized for value in values if isinstance(value, str)):
+            return product
+    return None
+
+
+def _special_rule(product: str, site: str, rules: dict[str, Any]) -> dict[str, Any] | None:
+    normalized = _normalize_name(product)
+    for rule in (rules.get(site) or {}).values():
+        if any(_normalize_name(alias) in normalized for alias in rule.get("aliases", [])):
+            return rule
+    return None
+
+
+def _has_product_group(payload: Any, groups: list[str]) -> bool:
+    if not isinstance(payload, dict) or not isinstance(payload.get("product"), dict):
+        raise ValueError("Calculator product response does not contain product")
+    products = payload["product"]
+    return any(
+        isinstance(products.get(group), list)
+        and any(isinstance(item, dict) and item.get("resourceSpecCode") and isinstance(item.get("planList"), list) and item["planList"] for item in products[group])
+        for group in groups
+    )
+
+
 def _region_in_payload(payload: Any, region: str) -> bool:
     if not isinstance(payload, dict) or not isinstance(payload.get("endpoints"), list):
         raise ValueError("API response does not contain an endpoints array")
@@ -151,10 +221,16 @@ def check_service_region(
     product_regions: dict[str, list[str]] | None = None,
     code_file: Path = DEFAULT_CODE_FILE,
     product_regions_file: Path = DEFAULT_PRODUCT_REGIONS_FILE,
+    special_products_file: Path = DEFAULT_SPECIAL_PRODUCTS_FILE,
+    site: str = "intl",
     timeout: int = 15,
     endpoint_template: str = DEFAULT_ENDPOINT_URL,
+    opener=None,
 ) -> dict[str, Any]:
     """Return the service-region result and evidence for one inventory row."""
+    if site not in CALCULATOR_MENU_ENDPOINTS:
+        raise ValueError(f"Unsupported calculator site: {site}")
+    opener = opener or urlopen
     catalog = service_catalog if service_catalog is not None else load_service_codes(code_file)
     supported_regions = (
         product_regions
@@ -170,6 +246,71 @@ def check_service_region(
             "codes": [],
             "reason": "No matching service name in code.json",
         }
+    for service in services:
+        if service.get("global") is True:
+            return {
+                "status": AVAILABLE,
+                "product": product,
+                "region": region,
+                "codes": [item["code"] for item in services],
+                "matched_code": service["code"],
+                "source": "code.json:global",
+            }
+
+    try:
+        rules = load_special_products(special_products_file)
+        menu = _fetch_calculator(
+            CALCULATOR_MENU_ENDPOINTS[site],
+            {"sign": "common", "language": "zh-cn" if site == "china" else "en-us"},
+            timeout,
+            opener,
+        )
+        special = _special_rule(product, site, rules)
+        if special:
+            parent = _calculator_product_match(_calculator_products(menu), [special["parent_url_path"]])
+            if parent is None:
+                return {"status": UNAVAILABLE, "product": product, "region": region, "codes": [item["code"] for item in services], "matched_code": services[0]["code"], "reason": "Parent product is absent from calculator menuInfo", "source": "calculator:menuInfo", "site": site}
+            region_online = parent.get("regionOnline")
+            if not isinstance(region_online, dict) or region not in (region_online.get("regionList") or []):
+                return {"status": UNAVAILABLE, "product": product, "region": region, "codes": [item["code"] for item in services], "matched_code": services[0]["code"], "reason": "Target region is absent from parent product in calculator menuInfo", "source": "calculator:menuInfo", "site": site}
+            product_payload = _fetch_calculator(
+                CALCULATOR_PRODUCT_ENDPOINTS[site],
+                {
+                    "urlPath": special["parent_url_path"],
+                    "tag": "general.online.portal",
+                    "region": region,
+                    "tab": "calc",
+                    "sign": "common",
+                },
+                timeout,
+                opener,
+            )
+            if _has_product_group(product_payload, special["product_groups"]):
+                return {"status": AVAILABLE, "product": product, "region": region, "codes": [item["code"] for item in services], "matched_code": services[0]["code"], "source": "calculator:productInfo", "site": site}
+            return {"status": UNAVAILABLE, "product": product, "region": region, "codes": [item["code"] for item in services], "matched_code": services[0]["code"], "reason": "Special product group is absent or has no valid price plan in productInfo", "source": "calculator:productInfo", "site": site}
+
+        queries = [product, *[item["code"] for item in services]]
+        menu_product = _calculator_product_match(_calculator_products(menu), queries)
+        if menu_product is not None:
+            region_online = menu_product.get("regionOnline")
+            if not isinstance(region_online, dict) or not isinstance(region_online.get("regionList"), list):
+                raise ValueError("Calculator menu product has no usable regionOnline.regionList")
+            if region in region_online["regionList"]:
+                return {"status": AVAILABLE, "product": product, "region": region, "codes": [item["code"] for item in services], "matched_code": services[0]["code"], "source": "calculator:menuInfo", "site": site}
+            return {"status": UNAVAILABLE, "product": product, "region": region, "codes": [item["code"] for item in services], "matched_code": services[0]["code"], "reason": "Target region is absent from calculator menuInfo", "source": "calculator:menuInfo", "site": site}
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
+        calculator_failure = f"{exc.__class__.__name__}: {exc}"
+    else:
+        calculator_failure = None
+
+    if calculator_failure:
+        return {
+            "status": CALCULATOR_FAILURE,
+            "product": product,
+            "region": region,
+            "codes": [item["code"] for item in services],
+            "reason": f"Calculator check failed: {calculator_failure}",
+        }
 
     failures: list[str] = []
     checked_codes: list[str] = []
@@ -177,16 +318,6 @@ def check_service_region(
     for service in services:
         code = service["code"]
         checked_codes.append(code)
-
-        if service.get("global") is True:
-            return {
-                "status": AVAILABLE,
-                "product": product,
-                "region": region,
-                "codes": checked_codes,
-                "matched_code": code,
-                "source": "code.json:global",
-            }
 
         if code in supported_regions:
             regions = supported_regions[code]
@@ -244,6 +375,8 @@ def main() -> None:
     parser.add_argument("--region", required=True, help="HWC Target Region")
     parser.add_argument("--code-file", type=Path, default=DEFAULT_CODE_FILE)
     parser.add_argument("--product-regions-file", type=Path, default=DEFAULT_PRODUCT_REGIONS_FILE)
+    parser.add_argument("--special-products-file", type=Path, default=DEFAULT_SPECIAL_PRODUCTS_FILE)
+    parser.add_argument("--site", choices=sorted(CALCULATOR_MENU_ENDPOINTS), default="intl")
     parser.add_argument("--timeout", type=int, default=15)
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
@@ -254,6 +387,8 @@ def main() -> None:
             args.region,
             code_file=args.code_file,
             product_regions_file=args.product_regions_file,
+            special_products_file=args.special_products_file,
+            site=args.site,
             timeout=args.timeout,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
