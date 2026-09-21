@@ -39,7 +39,7 @@ Evaluate each candidate resource in the following order and record the evidence:
 
 ## Solution Selection and Report Format
 
-Alternative solutions must appear in a separate section of the final report after all resource tables, using the standalone second-level heading `## Alternative Solutions Reference`. Each solution must be an independent third-level subsection. Do not put it in `Recommended Spec` or `Recommendation Notes`, and do not modify the original monthly cost figures.
+Alternative solutions must appear in a separate section of the final report after all resource tables, using the standalone second-level heading `## Alternative Solutions`. Each solution must be an independent third-level subsection. Do not put it in `Recommended Spec` or `Recommendation Notes`, and do not modify the original monthly cost figures.
 
 Each subsection must contain at least the following fields. Use the user's language for the field names and descriptions:
 
@@ -55,6 +55,7 @@ Each subsection must contain at least the following fields. Use the user's langu
 - **Cost assessment**: <Describe only the cost direction and billing items that need to be recalculated; do not invent prices>
 - **Risks and validation**: <PoC, load testing, failure drills, data validation, or business confirmation items>
 - **Evidence**: <Local cache files and/or official documentation URLs>
+```
 
 A resource may have multiple candidate solutions, but the report should provide no more than one "recommended solution" and two alternative directions, to avoid presenting users with a collection of unverified architectures. If multiple resources belong to the same migration pattern, they may be combined into one subsection, but all triggering resource numbers and regions must be listed.
 
